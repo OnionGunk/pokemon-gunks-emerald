@@ -35,7 +35,7 @@
 #include "confetti_util.h"
 #include "constants/rgb.h"
 
-#define HALL_OF_FAME_MAX_TEAMS 50
+#define HALL_OF_FAME_MAX_TEAMS 33 // Gunk's: one flash sector (was 50 in two)
 #define TAG_CONFETTI 1001
 
 struct HallofFameMon

@@ -35,4 +35,4 @@ fits** without a tenth storage sector in *both* save slots.
 
 ## Decision
 
-Waiting on the user. Until then the change list marks this one "Plan".
+The user chose 16 boxes (option 2), 2026-11-02.

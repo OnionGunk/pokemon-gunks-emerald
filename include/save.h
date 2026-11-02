@@ -20,16 +20,17 @@
 #define SECTOR_ID_SAVEBLOCK1_START    1
 #define SECTOR_ID_SAVEBLOCK1_END      4
 #define SECTOR_ID_PKMN_STORAGE_START  5
-#define SECTOR_ID_PKMN_STORAGE_END   13
-#define NUM_SECTORS_PER_SLOT         14
-// Save Slot 1: 0-13;  Save Slot 2: 14-27
-#define SECTOR_ID_HOF_1              28
-#define SECTOR_ID_HOF_2              29
-#define SECTOR_ID_TRAINER_HILL       30
+// Gunk's: one more PC storage sector per slot (16 boxes). The Hall of Fame moves to one sector (33 teams) and
+// the e-Reader Trainer Hill challenge no longer has a sector (TryRead/WriteSpecialSaveSector refuse it).
+#define SECTOR_ID_PKMN_STORAGE_END   14
+#define NUM_SECTORS_PER_SLOT         15
+// Save Slot 1: 0-14;  Save Slot 2: 15-29
+#define SECTOR_ID_HOF_1              30
+#define SECTOR_ID_TRAINER_HILL       30 // not saved any more, see above
 #define SECTOR_ID_RECORDED_BATTLE    31
 #define SECTORS_COUNT                32
 
-#define NUM_HOF_SECTORS 2
+#define NUM_HOF_SECTORS 1
 
 #define SAVE_STATUS_EMPTY    0
 #define SAVE_STATUS_OK       1

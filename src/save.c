@@ -25,11 +25,12 @@ static u8 HandleReplaceSector(u16, const struct SaveSectorLocation *);
 /*
  * Sector Layout:
  *
- * Sectors 0 - 13:      Save Slot 1
- * Sectors 14 - 27:     Save Slot 2
- * Sectors 28 - 29:     Hall of Fame
- * Sector 30:           Trainer Hill
+ * Sectors 0 - 14:      Save Slot 1
+ * Sectors 15 - 29:     Save Slot 2
+ * Sector 30:           Hall of Fame
  * Sector 31:           Recorded Battle
+ *
+ * (Gunk's: retail has 14 sectors per slot, the Hall of Fame in 28-29 and the e-Reader Trainer Hill in 30.)
  *
  * There are two save slots for saving the player's game data. We alternate between
  * them each time the game is saved, so that if the current save slot is corrupt,
@@ -69,7 +70,8 @@ struct
     SAVEBLOCK_CHUNK(struct PokemonStorage, 5),
     SAVEBLOCK_CHUNK(struct PokemonStorage, 6),
     SAVEBLOCK_CHUNK(struct PokemonStorage, 7),
-    SAVEBLOCK_CHUNK(struct PokemonStorage, 8), // SECTOR_ID_PKMN_STORAGE_END
+    SAVEBLOCK_CHUNK(struct PokemonStorage, 8),
+    SAVEBLOCK_CHUNK(struct PokemonStorage, 9), // SECTOR_ID_PKMN_STORAGE_END
 };
 
 // These will produce an error if a save struct is larger than the space
@@ -731,7 +733,6 @@ u8 HandleSavingData(u8 saveType)
         // Save the Hall of Fame
         tempAddr = gDecompressionBuffer;
         HandleWriteSectorNBytes(SECTOR_ID_HOF_1, tempAddr, SECTOR_DATA_SIZE);
-        HandleWriteSectorNBytes(SECTOR_ID_HOF_2, tempAddr + SECTOR_DATA_SIZE, SECTOR_DATA_SIZE);
         break;
     case SAVE_NORMAL:
     default:
@@ -890,8 +891,6 @@ u8 LoadGameSave(u8 saveType)
         break;
     case SAVE_HALL_OF_FAME:
         status = TryLoadSaveSector(SECTOR_ID_HOF_1, gDecompressionBuffer, SECTOR_DATA_SIZE);
-        if (status == SAVE_STATUS_OK)
-            status = TryLoadSaveSector(SECTOR_ID_HOF_2, &gDecompressionBuffer[SECTOR_DATA_SIZE], SECTOR_DATA_SIZE);
         break;
     }
 
@@ -929,7 +928,7 @@ u32 TryReadSpecialSaveSector(u8 sector, u8 *dst)
     s32 size;
     u8 *savData;
 
-    if (sector != SECTOR_ID_TRAINER_HILL && sector != SECTOR_ID_RECORDED_BATTLE)
+    if (sector != SECTOR_ID_RECORDED_BATTLE)
         return SAVE_STATUS_ERROR;
 
     ReadFlash(sector, 0, (u8 *)&gSaveDataBuffer, SECTOR_SIZE);
@@ -952,7 +951,7 @@ u32 TryWriteSpecialSaveSector(u8 sector, u8 *src)
     u8 *savData;
     void *savDataBuffer;
 
-    if (sector != SECTOR_ID_TRAINER_HILL && sector != SECTOR_ID_RECORDED_BATTLE)
+    if (sector != SECTOR_ID_RECORDED_BATTLE)
         return SAVE_STATUS_ERROR;
 
     savDataBuffer = &gSaveDataBuffer;

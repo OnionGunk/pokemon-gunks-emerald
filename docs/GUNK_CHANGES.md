@@ -6,7 +6,7 @@ save suite passed on that build.
 
 | # | Change | Emerald today | Verdict | Status |
 |---|--------|---------------|---------|--------|
-| 1 | Title `GUNK EM` (ROM header) | `POKEMON EMER` | Port | Planned |
+| 1 | Title `GUNK EM` (ROM header) | `POKEMON EMER` | Port (game code stays BPEE so emulators keep the flash + RTC settings) | Written, not built yet |
 | 2 | Save-safety suite (save cycles, crash during a save, damaged-save recovery) | — | Test harness | Harness ready; suite in progress |
 | 3 | Instant text | Options: SLOW / MID / FAST, default MID | Port: add INSTANT, new games default FAST | Planned |
 | 4 | Faster EXP bar | Fills 1 px per frame-step | Port | Planned |
@@ -23,7 +23,7 @@ save suite passed on that build.
 | 15 | HMs without teaching | Must teach the HM | Port: owned HM + compatible Pokémon + badge | Planned |
 | 16 | Move Tutor | Move Relearner in Fallarbor (Heart Scale) | Port: free relearner on every Pokémon Center PC | Planned |
 | 17 | Faster eggs | Retail egg cycles | Port: half the steps | Planned |
-| 18 | More PC boxes | 14 boxes (420 slots: already a Gen 3 living dex) | Plan: `docs/PC_BOXES_PLAN.md`. 16 is the most that fits; it costs Hall of Fame space and the e-Reader Trainer Hill | Waiting on the user |
+| 18 | More PC boxes | 14 boxes | 16 boxes (user's choice, `docs/PC_BOXES_PLAN.md`): 15 sectors per slot, Hall of Fame 33 teams in sector 30, no e-Reader Trainer Hill save. Old saves don't load | Written, not built yet |
 | 19 | DexNav | — | Port | Planned |
 | 20 | Following Pokémon | — | Port | Planned |
 | — | Honey trees, Poké Radar info | Don't exist in Emerald | Skip | — |
