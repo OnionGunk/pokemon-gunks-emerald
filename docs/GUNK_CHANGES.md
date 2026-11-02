@@ -23,7 +23,7 @@ save suite passed on that build.
 | 15 | HMs without teaching | Must teach the HM | Port: owned HM + compatible Pokémon + badge | Planned |
 | 16 | Move Tutor | Move Relearner in Fallarbor (Heart Scale) | Port: free relearner on every Pokémon Center PC | Planned |
 | 17 | Faster eggs | Retail egg cycles | Port: half the steps | Planned |
-| 18 | More PC boxes | 14 boxes | Plan first: `docs/PC_BOXES_PLAN.md` | Planned |
+| 18 | More PC boxes | 14 boxes (420 slots: already a Gen 3 living dex) | Plan: `docs/PC_BOXES_PLAN.md`. 16 is the most that fits; it costs Hall of Fame space and the e-Reader Trainer Hill | Waiting on the user |
 | 19 | DexNav | — | Port | Planned |
 | 20 | Following Pokémon | — | Port | Planned |
 | — | Honey trees, Poké Radar info | Don't exist in Emerald | Skip | — |
