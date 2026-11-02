@@ -1,163 +1,55 @@
-# Pokémon Emerald
+# Pokémon Gunk's Emerald Version
 
-This is a fork of the [matching decompilation](https://github.com/pret/pokeemerald) at [PRET](https://github.com/pret).
+A quality-of-life hack of Pokémon Emerald, built on [pret's Emerald decompilation](https://github.com/pret/pokeemerald).
+It keeps the game's difficulty and story as they are and takes the grind and friction out, for long playthroughs.
 
-It attempts to maintain vanilla compatibility whenever possible. It doesn't increase the size of any save data structure or the object event structure.
+> **Status: in development.** No release yet. The first release comes once the hack is playable start to
+> finish. Progress on each change is tracked in [`docs/GUNK_CHANGES.md`](docs/GUNK_CHANGES.md).
 
-There are several branches, each with one main feature (and sometimes some extra stuff):
+## Features (planned)
 
-**followers-expanded-id** branch:
-* [HGSS-style pokémon followers](https://bulbapedia.bulbagarden.net/wiki/Walking_Pok%C3%A9mon#Pok.C3.A9mon_HeartGold_and_SoulSilver) for all 386 pokémon (including forms & shinies)
-* Includes follower emotes and a majority of the HGSS messages
-* Custom pokeball sprites for Gen 1-7 pokéballs
-* Followers can use field moves in the overworld
-* Overworld form changes for Ditto, Mew, Castform, etc.
-* Asymmetrical & 64x64 OW support
-* Dynamic Overworld Palette System (DOWP) & reflections compatible with berry trees, etc.
-* Expands OW graphicsIds to 16 bits in a backwards compatible way
-* Includes support for compressed OW graphics
+- **DexNav.** See which Pokémon live on the route, then search for one. Searches roll legal wild encounters,
+  and search levels and chains raise the odds of good IVs and shinies.
+- **Pokémon follow you.**
+- **More PC boxes** than the original 14.
+- **Faster play:** instant text, a faster EXP bar, auto-run, faster egg hatching.
+- **Items:** reusable TMs, two registered items, bag sorting, a prompt to use another Repel when one runs out,
+  and an Endless Repel toggle.
+- **Pokémon:** IV and EV view in the summary, Exp. All, vitamins up to 252 EVs, and trade evolutions without
+  trading. HM moves work without teaching the move, and every Pokémon Center has a Move Tutor.
 
-![Pokeball](https://i.imgur.com/OMbS67Q.gif)
-![Messages](https://i.imgur.com/sTbGVEY.gif)
-![Forms](https://i.imgur.com/wDhFNf4.gif)
-![HM](https://i.imgur.com/lnXJGHd.gif)
+Battle mechanics, trainers, wild Pokémon and the story are Emerald's own. Save safety comes first: every build
+passes an emulator test suite that covers save cycles, crashes during a save and damaged-save recovery, and
+the same suite runs on unmodified Emerald as the control.
 
-**icons** branch:
-* Now standalone, without following pokémon.
-* Dynamic Overworld Palette System (DOWP) & reflections compatible with berry trees, etc.
-* Expands OW graphicsIds to 16 bits in a backwards compatible way
-* All pokemon icons updated to Gen 6, based on [this repo](https://github.com/msikma/pokesprite/tree/master/icons/pokemon/regular)
-* This includes compatibility with the PC, trade, contests, mail, Battle Dome. Examples:
-![PC](https://i.imgur.com/wzwJfd1.png)
-![Party](https://i.imgur.com/8hbE88t.png)
-![Contest](https://i.imgur.com/S9mCEFL.png)
-* Icons share palettes with front sprites, meaning that shiny pokemon will also have shiny icons!
+Why pret's decompilation and not pokeemerald-expansion: [`docs/ENGINE.md`](docs/ENGINE.md).
 
-**icons-followers** branch:
-* Has both **icons** and **followers-expanded-id**
+## Play it
 
-**lighting-expanded-id** branch:
-* Everything from the **followers-expanded-id** branch.
-* Day/night shading compatible with weather.
-* GSC-style window lights.
-* WIP interframe-blended lamp lights at night, i.e in Rustboro.
-* HGSS-style alpha-blended shadows for object events.
+Releases ship a **BPS patch**, not a ROM. You need your own dump of **Pokémon Emerald (USA)**:
 
-**just-lighting** branch:
-* `lighting-expanded-id` but with following pokémon code & assets completely removed. (This allows for more than 255 OW graphics)
-* Saves with following pokémon can still safely be loaded.
-
-**followers-legacy** branch:
-* Like `followers-expanded-id`, but without expanding OW graphicsIds to 16 bits
-
-> Note: Unless you have a specific need for it, you should probably use `followers-expanded-id` over this.
-
-**guillotine** branch:
-* ~~Decapitates~~ Decapitalizes **all** text at runtime, with some exceptions (see the [FAQ](#guillotine-q-how-can-i-keep-my-strings-from-being-decapped))
-* Future-proof, does not require mass-replacing strings
-
-To set up the repository, see [INSTALL.md](INSTALL.md).
-
-When merging this README, to keep whatever you have there:
-
-```bash
-# git merge ...
-# Conflict !!
-git checkout --ours README.md
+```
+sha1: f3ae088181bf583e55daf962a92bb46f4f1d07b7
 ```
 
-## FAQ
-### `(followers*)` Q: Where are the config settings?
-A: Configuration for the follower system is mostly in [event_objects.h](include/constants/event_objects.h):
-```c
-// If true, follower pokemon will bob up and down
-// during their idle & walking animations
-#define OW_MON_BOBBING  TRUE
+1. Download the `.bps` file from [Releases](../../releases).
+2. Apply it to your ROM with [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) (in the browser),
+   Floating IPS, or `py tools/patch/bps.py apply <emerald.gba> <patch.bps> <out.gba>`.
+3. Play the result in any GBA emulator or flashcart. The patcher checks your ROM first and refuses the wrong one.
 
-// If true, adds a small amount of overhead
-// to OW code so that large (48x48, 64x64) OWs
-// will display correctly under bridges, etc.
-#define LARGE_OW_SUPPORT TRUE
+Saves carry over between releases unless the release notes say otherwise. Back up your save before updating.
 
-// Followers will emerge from the pokeball they are stored in,
-// instead of a normal pokeball
-#define OW_MON_POKEBALLS TRUE
+## Build it
 
-// New/old handling for followers during scripts;
-// TRUE: Script collisions hide follower, FLAG_SAFE_FOLLOWER_MOVEMENT on by default
-// (scripted player movement moves follower too!)
-// FALSE: Script collisions unhandled, FLAG_SAFE_FOLLOWER_MOVEMENT off by default
-#define OW_MON_SCRIPT_MOVEMENT TRUE
+Follow pret's [`INSTALL.md`](INSTALL.md), then run `make`. A clean build reproduces the release ROM, and
+`tools/patch/bps.py make` makes the patch from it.
 
-// If set, the only pokemon allowed to follow you
-// will be those matching species, met location,
-// and/or met level;
-// These accept vars, too: VAR_TEMP_1, etc
-#define OW_MON_ALLOWED_SPECIES (0)
-#define OW_MON_ALLOWED_MET_LVL (0)
-#define OW_MON_ALLOWED_MET_LOC (0)
-```
+## Credits
 
-### `(lighting)` Q: How do I mark certain colors in a palette as light-blended?
-A: Create a `.pla` file in the same folder as the `.pal` with the same name.
+- [pret](https://github.com/pret/pokeemerald) for the Emerald decompilation this hack is built on, and for
+  [agbcc](https://github.com/pret/agbcc).
+- The DexNav idea comes from later Pokémon games and fan hacks such as Pokémon Unbound.
+- Further credits are added here as features are ported.
 
-In this file you can enter color indices [0,15]
-on separate lines to mark those colors as being light-blended, i.e:
-
-`06.pla:`
-```
-# A comment
-0 # if color 0 is listed, uses it to blend with instead of the default!
-1
-9
-10
-```
-
-You might have to `make mostlyclean` or change the `.pal` file to pick up the changes.
-
-### `(guillotine)` Q: How can I keep my string(s) from being decapped?
-A: There are a number of ways to make a string "fixed case" so that it will not be decapitalized when displayed:
-
-C strings: Replace the `_` with `_C`:
-```c
-// _C = fixed (C)ase string!
-const u8 gText_IDNumber[] = _C("IDNo.");
-```
-ASM strings: Replace `.string` with `.fixstr`:
-```arm
-gText_SavingDontTurnOff::
-    @ Lasts until the string terminator '$'
-	.fixstr "SAVING…\n"
-	.string "DON'T TURN OFF THE POWER.$"
-```
-You can fix-case/unfix parts of a string like so:
-```arm
-	.string "{FIXED_CASE}WARNING!{UNFIX_CASE}\p"
-```
-For a placeholder (only the placeholder will be fixed-case):
-```arm
-	.string "{STR_VAR_2_FIXED} was transferred to\n"
-	.string "BOX “{STR_VAR_1}.”$"
-```
-See also the configuration in [text.h](gflib/text.h).
-
-There's also special handling for "separated bigrams"; basically, two letter words.
-This includes: `"TM01", "PC", "EV"`, any two uppercase characters surrounded by digits, whitespace, or the start/end of a string. These will not be decapped.
-
-### Q: AI policy?
-
-No AI was used in the making of my branches; all of my work is entirely organic.
-Please do not open Issues or PRs unless you can say the same of all text and code within them.
-
-**Please ask for permission** before using any of these branches for a project outside the `pokeemerald` ecosystem.
-If your project is not a fork of `pokeemerald` or does not run on the GBA, ask first.
-
-**Please ask for permission** before using any of these branches in a project reliant on AI assistance.
-
-## See also
-
-For contacts and other pret projects, see [pret.github.io](https://pret.github.io/).
-
-Feel free to open an [Issue](https://github.com/aarant/pokeemerald/issues/new) on this repo.
-
-To contact me on Discord: **merrp**.
+Pokémon is © Nintendo, Creatures Inc. and GAME FREAK inc. This is a non-commercial fan project and contains
+no ROM data; you need your own legally dumped copy of the game.
