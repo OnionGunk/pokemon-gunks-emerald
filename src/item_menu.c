@@ -988,6 +988,8 @@ static void BagMenu_ItemPrintCallback(u8 windowId, u32 itemIndex, u8 y)
             // Print registered icon
             if (gSaveBlock1Ptr->registeredItem != ITEM_NONE && gSaveBlock1Ptr->registeredItem == itemId)
                 BlitBitmapToWindow(windowId, sRegisteredSelect_Gfx, 96, y - 1, 24, 16);
+            else if (VarGet(VAR_GUNK_REGISTERED_ITEM_L) != ITEM_NONE && VarGet(VAR_GUNK_REGISTERED_ITEM_L) == itemId)
+                BagMenu_Print(windowId, FONT_NARROW, gText_GunkRegisteredL, 104, y, 0, 0, TEXT_SKIP_DRAW, COLORID_NORMAL); // Gunk's
         }
     }
 }
@@ -1626,7 +1628,7 @@ static void OpenContextMenu(u8 taskId)
                 gBagMenu->contextMenuItemsPtr = gBagMenu->contextMenuItemsBuffer;
                 gBagMenu->contextMenuNumItems = ARRAY_COUNT(sContextMenuItems_KeyItemsPocket);
                 memcpy(&gBagMenu->contextMenuItemsBuffer, &sContextMenuItems_KeyItemsPocket, sizeof(sContextMenuItems_KeyItemsPocket));
-                if (gSaveBlock1Ptr->registeredItem == gSpecialVar_ItemId)
+                if (gSaveBlock1Ptr->registeredItem == gSpecialVar_ItemId || VarGet(VAR_GUNK_REGISTERED_ITEM_L) == gSpecialVar_ItemId)
                     gBagMenu->contextMenuItemsBuffer[1] = ACTION_DESELECT;
                 if (gSpecialVar_ItemId == ITEM_MACH_BIKE || gSpecialVar_ItemId == ITEM_ACRO_BIKE)
                 {
@@ -1917,10 +1919,21 @@ static void ItemMenu_Register(u8 taskId)
     u16 *scrollPos = &gBagPosition.scrollPosition[gBagPosition.pocket];
     u16 *cursorPos = &gBagPosition.cursorPosition[gBagPosition.pocket];
 
+    // Gunk's: two registered items. Registering a new one puts it on SELECT and moves SELECT's item to L.
     if (gSaveBlock1Ptr->registeredItem == gSpecialVar_ItemId)
+    {
         gSaveBlock1Ptr->registeredItem = ITEM_NONE;
+    }
+    else if (VarGet(VAR_GUNK_REGISTERED_ITEM_L) == gSpecialVar_ItemId)
+    {
+        VarSet(VAR_GUNK_REGISTERED_ITEM_L, ITEM_NONE);
+    }
     else
+    {
+        if (gSaveBlock1Ptr->registeredItem != ITEM_NONE)
+            VarSet(VAR_GUNK_REGISTERED_ITEM_L, gSaveBlock1Ptr->registeredItem);
         gSaveBlock1Ptr->registeredItem = gSpecialVar_ItemId;
+    }
     DestroyListMenuTask(tListTaskId, scrollPos, cursorPos);
     LoadBagItemListBuffers(gBagPosition.pocket);
     tListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, *scrollPos, *cursorPos);
@@ -2041,7 +2054,20 @@ static void Task_ItemContext_GiveToPC(u8 taskId)
 
 #define tUsingRegisteredKeyItem data[3] // See usage in item_use.c
 
+static bool8 UseKeyItemOnField(u16 *registeredItem);
+
 bool8 UseRegisteredKeyItemOnField(void)
+{
+    return UseKeyItemOnField(&gSaveBlock1Ptr->registeredItem);
+}
+
+// Gunk's: the second registered item, on L
+bool8 GunkUseLRegisteredKeyItemOnField(void)
+{
+    return UseKeyItemOnField(GetVarPointer(VAR_GUNK_REGISTERED_ITEM_L));
+}
+
+static bool8 UseKeyItemOnField(u16 *registeredItem)
 {
     u8 taskId;
 
@@ -2049,22 +2075,22 @@ bool8 UseRegisteredKeyItemOnField(void)
         return FALSE;
     HideMapNamePopUpWindow();
     ChangeBgY_ScreenOff(0, 0, BG_COORD_SET);
-    if (gSaveBlock1Ptr->registeredItem != ITEM_NONE)
+    if (*registeredItem != ITEM_NONE)
     {
-        if (CheckBagHasItem(gSaveBlock1Ptr->registeredItem, 1) == TRUE)
+        if (CheckBagHasItem(*registeredItem, 1) == TRUE)
         {
             LockPlayerFieldControls();
             FreezeObjectEvents();
             PlayerFreeze();
             StopPlayerAvatar();
-            gSpecialVar_ItemId = gSaveBlock1Ptr->registeredItem;
-            taskId = CreateTask(GetItemFieldFunc(gSaveBlock1Ptr->registeredItem), 8);
+            gSpecialVar_ItemId = *registeredItem;
+            taskId = CreateTask(GetItemFieldFunc(*registeredItem), 8);
             gTasks[taskId].tUsingRegisteredKeyItem = TRUE;
             return TRUE;
         }
         else
         {
-            gSaveBlock1Ptr->registeredItem = ITEM_NONE;
+            *registeredItem = ITEM_NONE;
         }
     }
     ScriptContext_SetupScript(EventScript_SelectWithoutRegisteredItem);

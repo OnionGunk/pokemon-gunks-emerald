@@ -580,6 +580,16 @@ void SwapRegisteredBike(void)
         gSaveBlock1Ptr->registeredItem = ITEM_MACH_BIKE;
         break;
     }
+    // Gunk's: the same for the bike registered to L
+    switch (VarGet(VAR_GUNK_REGISTERED_ITEM_L))
+    {
+    case ITEM_MACH_BIKE:
+        VarSet(VAR_GUNK_REGISTERED_ITEM_L, ITEM_ACRO_BIKE);
+        break;
+    case ITEM_ACRO_BIKE:
+        VarSet(VAR_GUNK_REGISTERED_ITEM_L, ITEM_MACH_BIKE);
+        break;
+    }
 }
 
 u16 BagGetItemIdByPocketPosition(u8 pocketId, u16 pocketPos)

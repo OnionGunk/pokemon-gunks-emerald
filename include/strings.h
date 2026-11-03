@@ -1032,6 +1032,7 @@ extern const u8 gText_ItGotAway[];
 extern const u8 gText_HallOfFame[];
 extern const u8 gText_LogOff[];
 extern const u8 gText_GunkMoveTutor[];
+extern const u8 gText_GunkRegisteredL[];
 extern const u8 gText_LanettesPC[];
 extern const u8 gText_SomeonesPC[];
 extern const u8 gText_PlayersPC[];
