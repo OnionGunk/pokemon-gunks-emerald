@@ -267,7 +267,7 @@ static u8 ChooseWildMonIndex_Fishing(u8 rod)
     return wildMonIndex;
 }
 
-static u8 ChooseWildMonLevel(const struct WildPokemon *wildPokemon)
+u8 ChooseWildMonLevel(const struct WildPokemon *wildPokemon)
 {
     u8 min;
     u8 max;
@@ -994,3 +994,24 @@ bool32 MapHasNoEncounterData(void)
     return (GetCurrentMapWildMonHeaderId() == HEADER_NONE);
 }
 
+
+// Gunk's: one ordinary wild encounter roll of this species for the DexNav: the slot and level rolls, then
+// CreateWildMon (nature, personality loop, IVs), exactly as a real encounter makes them. Rolls of other slots
+// are thrown away before the Pokemon is made. Returns TRUE with the Pokemon in gEnemyParty[0].
+bool8 GunkRollWildMonForDexNav(u16 species, bool8 water)
+{
+    u16 headerId = GetCurrentMapWildMonHeaderId();
+    const struct WildPokemonInfo *info;
+    u8 index;
+
+    if (headerId == HEADER_NONE)
+        return FALSE;
+    info = water ? gWildMonHeaders[headerId].waterMonsInfo : gWildMonHeaders[headerId].landMonsInfo;
+    if (info == NULL)
+        return FALSE;
+    index = water ? ChooseWildMonIndex_WaterRock() : ChooseWildMonIndex_Land();
+    if (info->wildPokemon[index].species != species)
+        return FALSE;
+    CreateWildMon(species, ChooseWildMonLevel(&info->wildPokemon[index]));
+    return TRUE;
+}

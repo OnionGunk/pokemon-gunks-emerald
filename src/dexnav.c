@@ -139,7 +139,7 @@ static void PrintCurrentSpeciesInfo(void);
 static bool8 TryStartHiddenMonFieldEffect(u8 environment, u8 xSize, u8 ySize, bool8 smallScan);
 static void DexNavGenerateMoveset(u16 species, u8 searchLevel, u8 encounterLevel, u16* moveDst);
 static u16 DexNavGenerateHeldItem(u16 species, u8 searchLevel);
-static void GunkDexNavRollMon(u16 species, u8 level, u8 potential);
+static void GunkDexNavRollMon(u16 species, u8 environment, u8 potential);
 static u8 DexNavGeneratePotential(u8 searchLevel);
 static u8 DexNavTryGenerateMonLevel(u16 species, u8 environment);
 static u8 GetEncounterLevelFromMapData(u16 species, u8 environment);
@@ -834,7 +834,7 @@ static void Task_SetUpDexNavSearch(u8 taskId)
     DexNavGenerateMoveset(species, searchLevel, sDexNavSearchDataPtr->monLevel, &sDexNavSearchDataPtr->moves[0]);
     sDexNavSearchDataPtr->heldItem = DexNavGenerateHeldItem(species, searchLevel);
     sDexNavSearchDataPtr->potential = DexNavGeneratePotential(searchLevel);
-    GunkDexNavRollMon(species, sDexNavSearchDataPtr->monLevel, sDexNavSearchDataPtr->potential);
+    GunkDexNavRollMon(species, environment, sDexNavSearchDataPtr->potential);
     sDexNavSearchDataPtr->abilityNum = GetMonData(&sDexNavSearchDataPtr->mon, MON_DATA_ABILITY_NUM);
     DexNavProximityUpdate();
     
@@ -1223,11 +1223,14 @@ static void DexNavUpdateSearchWindow(u8 proximity, u8 searchLevel)
 //////////////////////////////
 //// DEXNAV MON GENERATOR ////
 //////////////////////////////
-// Gunk's: every DexNav Pokemon is an ordinary legal wild roll: its personality and then its IVs come from
-// consecutive RNG calls, like the game's own wild Pokemon (method H-1), and its ability follows the personality.
-// Search level, chain and stars don't edit the result; they buy extra rolls, and the best one is kept:
-// - shiny: as many personality rolls as the DexNav's shiny odds are worth in normal 1/8192 rolls
-// - stars: 1 = 8, 2 = 32, 3 = 128 rolls for the IVs, keeping the one with the most perfect IVs, then the best total
+// Gunk's: every DexNav Pokemon is an ordinary wild encounter of that species on this map: encounter slot,
+// level, nature, personality and IVs come from the same rolls a real encounter uses (GunkRollWildMonForDexNav),
+// so it is exactly as legal as a Pokemon caught the normal way. Search level, chain and stars never edit it;
+// they buy extra encounter rolls, and the best one is kept:
+// - shiny: as many rolls as the DexNav's shiny odds are worth in normal 1/8192 rolls; the first shiny wins
+// - stars: 1 = 8, 2 = 32, 3 = 128 rolls, keeping the one with the most perfect IVs, then the best total
+#define GUNK_DEXNAV_MAX_SLOT_ROLLS 6000 // encounter rolls per search, most of them other species
+
 static u32 GunkDexNavShinyRolls(void);
 
 static u32 GunkCountPerfectIvs(struct Pokemon *mon, u32 *total)
@@ -1245,23 +1248,26 @@ static u32 GunkCountPerfectIvs(struct Pokemon *mon, u32 *total)
     return count;
 }
 
-static void GunkDexNavRollMon(u16 species, u8 level, u8 potential)
+static void GunkDexNavRollMon(u16 species, u8 environment, u8 potential)
 {
     static const u16 sIvRolls[] = {1, 8, 32, 128};
     struct Pokemon *roll = &gEnemyParty[0];
     struct Pokemon *best = &sDexNavSearchDataPtr->mon;
+    bool8 water = (environment == ENCOUNTER_TYPE_WATER);
     u32 ivRolls = sIvRolls[min(potential, 3)];
     u32 shinyRolls = GunkDexNavShinyRolls();
     u32 rolls = max(ivRolls, shinyRolls);
-    u32 i, perfect, total, bestPerfect = 0, bestTotal = 0;
+    u32 tries, i = 0, perfect, total, bestPerfect = 0, bestTotal = 0;
     bool32 haveBest = FALSE;
 
-    for (i = 0; i < rolls; i++)
+    for (tries = 0; tries < GUNK_DEXNAV_MAX_SLOT_ROLLS && i < rolls; tries++)
     {
-        CreateMon(roll, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
+        if (!GunkRollWildMonForDexNav(species, water))
+            continue;
         if (i < shinyRolls && IsMonShiny(roll))
         {
             *best = *roll;
+            haveBest = TRUE;
             break;
         }
         if (i < ivRolls)
@@ -1275,14 +1281,23 @@ static void GunkDexNavRollMon(u16 species, u8 level, u8 potential)
                 haveBest = TRUE;
             }
         }
+        i++;
+    }
+    if (!haveBest) // species too rare here to roll in time: keep rolling until one plain encounter of it
+    {
+        while (!GunkRollWildMonForDexNav(species, water))
+            ;
+        *best = *roll;
     }
     ZeroEnemyPartyMons();
+    sDexNavSearchDataPtr->monLevel = GetMonData(best, MON_DATA_LEVEL);
+    for (i = 0; i < MAX_MON_MOVES; i++)
+        sDexNavSearchDataPtr->moves[i] = GetMonData(best, MON_DATA_MOVE1 + i);
 }
 
 static void CreateDexNavWildMon(u16 species, u8 potential, u8 level, u8 abilityNum, u16 item, u16* moves)
 {
     struct Pokemon* mon = &gEnemyParty[0];
-    u8 i;
 
     ZeroEnemyPartyMons();
     *mon = sDexNavSearchDataPtr->mon;
@@ -1291,10 +1306,7 @@ static void CreateDexNavWildMon(u16 species, u8 potential, u8 level, u8 abilityN
     if (item)
         SetMonData(mon, MON_DATA_HELD_ITEM, &item);
 
-    //Set moves (the level-up moveset: egg moves are off)
-    for (i = 0; i < MAX_MON_MOVES; i++)
-        SetMonMoveSlot(mon, moves[i], i);
-
+    // its moves are the ones its encounter roll gave it (egg moves are off)
     CalculateMonStats(mon);
 }
 
@@ -1302,19 +1314,8 @@ static void CreateDexNavWildMon(u16 species, u8 potential, u8 level, u8 abilityN
 //if it was a hidden encounter, updates the environment it is to be found from the wildheader encounterRate
 static u8 DexNavTryGenerateMonLevel(u16 species, u8 environment)
 {
-    u8 levelBase = GetEncounterLevelFromMapData(species, environment);
-    u8 levelBonus = gSaveBlock1Ptr->dexNavChain / 5;
-
-    if (levelBase == MON_LEVEL_NONEXISTENT)
-        return MON_LEVEL_NONEXISTENT;   //species not found in the area
-    
-    if (Random() % 100 < 4)
-        levelBonus += 10; //4% chance of having a +10 level
-
-    if (levelBase + levelBonus > MAX_LEVEL)
-        return MAX_LEVEL;
-    else
-        return levelBase + levelBonus;
+    // Gunk's: no chain or random level bonus; the level comes from the encounter roll (GunkDexNavRollMon)
+    return GetEncounterLevelFromMapData(species, environment);
 }
 
 static void DexNavGenerateMoveset(u16 species, u8 searchLevel, u8 encounterLevel, u16* moveDst)

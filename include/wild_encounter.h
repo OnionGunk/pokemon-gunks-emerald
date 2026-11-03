@@ -41,6 +41,8 @@ void CreateWildMon(u16 species, u8 level);
 u16 GetCurrentMapWildMonHeaderId(void);
 u8 ChooseWildMonIndex_Land(void);
 u8 ChooseWildMonIndex_WaterRock(void);
+u8 ChooseWildMonLevel(const struct WildPokemon *wildPokemon);
+bool8 GunkRollWildMonForDexNav(u16 species, bool8 water);
 u8 ChooseHiddenMonIndex(void);
 bool32 MapHasNoEncounterData(void);
 
