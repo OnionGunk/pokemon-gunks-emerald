@@ -51,6 +51,7 @@ extern bool8 gLinkTransferringData;
 extern struct Main gMain;
 extern u16 gKeyRepeatContinueDelay;
 extern bool8 gSoftResetDisabled;
+extern bool8 gGunkHoldVBlankRandom;
 extern IntrFunc gIntrTable[];
 extern u8 gLinkVSyncDisabled;
 extern u32 IntrMain_Buffer[];

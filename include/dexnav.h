@@ -1,7 +1,8 @@
 #ifndef GUARD_DEXNAV_H
 #define GUARD_DEXNAV_H
 
-#define DEXNAV_TIMEOUT                  15  //15 seconds is the time out. Max of 1092 seconds allowed
+#define DEXNAV_TIMEOUT                  10  // Gunk's: 10 seconds (600 field frames) to reach the patch (was 15)
+#define GUNK_DEXNAV_SHAKE_FRAMES        30  // Gunk's: the patch shakes again twice a second
 #define SNEAKING_PROXIMITY              4   //Tile amount
 #define CREEPING_PROXIMITY              2
 #define MAX_PROXIMITY                   20
@@ -125,6 +126,7 @@ void EndDexNavSearch(u8 taskId);
 void Task_OpenDexNavFromStartMenu(u8 taskId);
 bool8 TryStartDexnavSearch(void);
 void TryIncrementSpeciesSearchLevel(u16 dexNum);
+void GunkDexNavUpdateChainAfterBattle(void);
 void ResetDexNavSearch(void);
 bool8 TryFindHiddenPokemon(void);
 void IncrementDexNavChain(void);

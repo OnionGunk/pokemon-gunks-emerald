@@ -1,5 +1,6 @@
 #include "global.h"
 #include "pokemon_storage_system.h"
+#include "battle.h"
 #include "battle_main.h"
 #include "battle_setup.h"
 #include "bg.h"
@@ -93,6 +94,7 @@ struct DexNavSearch
     s16 tileY;
     u8 fldEffSpriteId;
     u8 fldEffId;
+    SpriteCallback fldEffCallback; // Gunk's: the patch sprite's callback, to tell it from a reused sprite slot
     u8 movementCount;
     u8 windowId;
     u8 iconSpriteId;
@@ -106,6 +108,7 @@ struct DexNavSearch
     u8 unk:6;
     u16 palBuffer[16];
     struct Pokemon mon; // Gunk's: the Pokemon rolled when the search starts
+    struct GunkWildRoll peeked; // Gunk's: what the peek saw of it (tests check the replay made the same Pokemon)
 };
 
 struct DexNavGUI
@@ -712,6 +715,31 @@ static bool8 DexNavPickTile(u8 environment, u8 areaX, u8 areaY, bool8 smallScan)
 }
 
 
+// Gunk's: stop the patch's field effect if its sprite is still the patch. One-shot effects (the shaking grass)
+// end and free their sprite on their own, and the slot may already belong to another sprite.
+static void GunkStopPatchEffect(void)
+{
+    struct Sprite *sprite = &gSprites[sDexNavSearchDataPtr->fldEffSpriteId];
+
+    if (sDexNavSearchDataPtr->fldEffSpriteId < MAX_SPRITES && sprite->inUse
+     && sprite->callback == sDexNavSearchDataPtr->fldEffCallback)
+        FieldEffectStop(sprite, sDexNavSearchDataPtr->fldEffId);
+    sDexNavSearchDataPtr->fldEffSpriteId = MAX_SPRITES;
+}
+
+// Gunk's: shake the patch again (same tile, same effect)
+static void GunkRestartPatchEffect(void)
+{
+    GunkStopPatchEffect();
+    gFieldEffectArguments[0] = sDexNavSearchDataPtr->tileX;
+    gFieldEffectArguments[1] = sDexNavSearchDataPtr->tileY;
+    gFieldEffectArguments[2] = 0xFF; // subpriority
+    gFieldEffectArguments[3] = 2;    // priority
+    sDexNavSearchDataPtr->fldEffSpriteId = FieldEffectStart(sDexNavSearchDataPtr->fldEffId);
+    if (sDexNavSearchDataPtr->fldEffSpriteId < MAX_SPRITES)
+        sDexNavSearchDataPtr->fldEffCallback = gSprites[sDexNavSearchDataPtr->fldEffSpriteId].callback;
+}
+
 static bool8 TryStartHiddenMonFieldEffect(u8 environment, u8 xSize, u8 ySize, bool8 smallScan)
 {
     u32 i;
@@ -770,8 +798,9 @@ static bool8 TryStartHiddenMonFieldEffect(u8 environment, u8 xSize, u8 ySize, bo
             sDexNavSearchDataPtr->fldEffSpriteId = FieldEffectStart(fldEffId);
             if (sDexNavSearchDataPtr->fldEffSpriteId == MAX_SPRITES)
                 return FALSE;
-            
+
             sDexNavSearchDataPtr->fldEffId = fldEffId;
+            sDexNavSearchDataPtr->fldEffCallback = gSprites[sDexNavSearchDataPtr->fldEffSpriteId].callback;
             return TRUE;
         }
     }
@@ -1000,13 +1029,13 @@ void EndDexNavSearch(u8 taskId)
     FlagClear(FLAG_SYS_DEXNAV_SEARCH);
     DestroyTask(taskId);
     RemoveDexNavWindowAndGfx();
-    FieldEffectStop(&gSprites[sDexNavSearchDataPtr->fldEffSpriteId], sDexNavSearchDataPtr->fldEffId);
+    GunkStopPatchEffect();
     Free(sDexNavSearchDataPtr);
 }
 
 static void EndDexNavSearchSetupScript(const u8 *script, u8 taskId)
 {
-    gSaveBlock1Ptr->dexNavChain = 0;   //reset chain
+    // Gunk's: the chain resets on a timeout (below) or a wild encounter of another species, not here
     EndDexNavSearch(taskId);
     ScriptContext_SetupScript(script);
 }
@@ -1108,7 +1137,10 @@ static void Task_DexNavSearch(u8 taskId)
         if (sDexNavSearchDataPtr->hiddenSearch && !task->tRevealed)
             EndDexNavSearch(taskId);
         else
+        {
+            gSaveBlock1Ptr->dexNavChain = 0; // Gunk's: timeout resets the chain
             EndDexNavSearchSetupScript(EventScript_PokemonGotAway, taskId);
+        }
         return;
     }
     
@@ -1146,7 +1178,7 @@ static void Task_DexNavSearch(u8 taskId)
     {
         bool8 ret;
         
-        FieldEffectStop(&gSprites[sDexNavSearchDataPtr->fldEffSpriteId], sDexNavSearchDataPtr->fldEffId);
+        GunkStopPatchEffect();
         while (1) {
             if (TryStartHiddenMonFieldEffect(sDexNavSearchDataPtr->environment, 10, 10, TRUE))
                 break;
@@ -1164,7 +1196,9 @@ static void Task_DexNavSearch(u8 taskId)
         
         task->tProximity = sDexNavSearchDataPtr->proximity;
     }
-    
+
+    if (task->tFrameCount % GUNK_DEXNAV_SHAKE_FRAMES == GUNK_DEXNAV_SHAKE_FRAMES - 1)
+        GunkRestartPatchEffect();
     task->tFrameCount++;
 }
 
@@ -1234,14 +1268,14 @@ static void DexNavUpdateSearchWindow(u8 proximity, u8 searchLevel)
 
 static u32 GunkDexNavShinyRolls(void);
 
-static u32 GunkCountPerfectIvs(struct Pokemon *mon, u32 *total)
+static u32 GunkCountPerfectIvs(const struct GunkWildRoll *roll, u32 *total)
 {
-    u32 i, count = 0;
+    u32 i, iv, count = 0;
 
     *total = 0;
     for (i = 0; i < NUM_STATS; i++)
     {
-        u32 iv = GetMonData(mon, MON_DATA_HP_IV + i);
+        iv = (roll->ivs[i / 3] >> (5 * (i % 3))) & MAX_IV_MASK;
         *total += iv;
         if (iv == MAX_PER_STAT_IVS)
             count++;
@@ -1249,34 +1283,49 @@ static u32 GunkCountPerfectIvs(struct Pokemon *mon, u32 *total)
     return count;
 }
 
+static bool32 GunkIsRollShiny(const struct GunkWildRoll *roll)
+{
+    u32 otId = T1_READ_32(gSaveBlock2Ptr->playerTrainerId);
+
+    return GET_SHINY_VALUE(otId, roll->personality) < SHINY_ODDS;
+}
+
+// Each roll is first only peeked at (its random numbers, no Pokemon made: making one per roll froze the game for
+// seconds at high search levels). The random seed before the best roll is kept, and that roll is made for real at
+// the end from the same seed, so it is the same encounter.
 static void GunkDexNavRollMon(u16 species, u8 environment, u8 potential)
 {
     static const u16 sIvRolls[] = {1, 8, 32, 128};
-    struct Pokemon *roll = &gEnemyParty[0];
-    struct Pokemon *best = &sDexNavSearchDataPtr->mon;
+    struct GunkWildRoll roll;
     bool8 water = (environment == ENCOUNTER_TYPE_WATER);
     u32 ivRolls = sIvRolls[min(potential, 3)];
     u32 shinyRolls = GunkDexNavShinyRolls();
     u32 rolls = max(ivRolls, shinyRolls);
     u32 tries, i = 0, perfect, total, bestPerfect = 0, bestTotal = 0;
+    u32 seed, bestSeed = 0, endSeed;
     bool32 haveBest = FALSE;
 
+    // a VBlank in the middle of a peek would advance the random numbers there but not in the replay
+    gGunkHoldVBlankRandom = TRUE;
     for (tries = 0; tries < GUNK_DEXNAV_MAX_SLOT_ROLLS && i < rolls; tries++)
     {
-        if (!GunkRollWildMonForDexNav(species, water))
+        seed = gRngValue;
+        if (!GunkRollWildMonForDexNav(species, water, &roll))
             continue;
-        if (i < shinyRolls && IsMonShiny(roll))
+        if (i < shinyRolls && GunkIsRollShiny(&roll))
         {
-            *best = *roll;
+            sDexNavSearchDataPtr->peeked = roll;
+            bestSeed = seed;
             haveBest = TRUE;
             break;
         }
         if (i < ivRolls)
         {
-            perfect = GunkCountPerfectIvs(roll, &total);
+            perfect = GunkCountPerfectIvs(&roll, &total);
             if (!haveBest || perfect > bestPerfect || (perfect == bestPerfect && total > bestTotal))
             {
-                *best = *roll;
+                sDexNavSearchDataPtr->peeked = roll;
+                bestSeed = seed;
                 bestPerfect = perfect;
                 bestTotal = total;
                 haveBest = TRUE;
@@ -1286,14 +1335,23 @@ static void GunkDexNavRollMon(u16 species, u8 environment, u8 potential)
     }
     if (!haveBest) // species too rare here to roll in time: keep rolling until one plain encounter of it
     {
-        while (!GunkRollWildMonForDexNav(species, water))
-            ;
-        *best = *roll;
+        do
+        {
+            bestSeed = gRngValue;
+        }
+        while (!GunkRollWildMonForDexNav(species, water, &roll));
+        sDexNavSearchDataPtr->peeked = roll;
     }
+    endSeed = gRngValue;
+    gRngValue = bestSeed;
+    GunkRollWildMonForDexNav(species, water, NULL); // the kept roll, made for real
+    gRngValue = endSeed;
+    gGunkHoldVBlankRandom = FALSE;
+    sDexNavSearchDataPtr->mon = gEnemyParty[0];
     ZeroEnemyPartyMons();
-    sDexNavSearchDataPtr->monLevel = GetMonData(best, MON_DATA_LEVEL);
+    sDexNavSearchDataPtr->monLevel = GetMonData(&sDexNavSearchDataPtr->mon, MON_DATA_LEVEL);
     for (i = 0; i < MAX_MON_MOVES; i++)
-        sDexNavSearchDataPtr->moves[i] = GetMonData(best, MON_DATA_MOVE1 + i);
+        sDexNavSearchDataPtr->moves[i] = GetMonData(&sDexNavSearchDataPtr->mon, MON_DATA_MOVE1 + i);
 }
 
 static void CreateDexNavWildMon(u16 species, u8 potential, u8 level, u8 abilityNum, u16 item, u16* moves)
@@ -2702,7 +2760,7 @@ void TryIncrementSpeciesSearchLevel(u16 dexNum)
 
 void ResetDexNavSearch(void)
 {
-    gSaveBlock1Ptr->dexNavChain = 0;    //reset dex nav chaining on new map
+    // Gunk's: the chain survives map changes (it resets on a timeout or a wild encounter of another species)
     VarSet(VAR_DEXNAV_STEP_COUNTER, 0); //reset hidden pokemon step counter
     if (FlagGet(FLAG_SYS_DEXNAV_SEARCH))
         EndDexNavSearch(FindTaskIdByFunc(Task_DexNavSearch));   //moving to new map ends dexnav search
@@ -2712,4 +2770,20 @@ void IncrementDexNavChain(void)
 {
     if (gSaveBlock1Ptr->dexNavChain < DEXNAV_CHAIN_MAX)
         gSaveBlock1Ptr->dexNavChain++;
+}
+
+// Gunk's: after any battle. A won or caught DexNav battle adds one to the chain; any other wild battle keeps the
+// chain if it was the registered species and resets it if not. Trainer battles leave it alone.
+void GunkDexNavUpdateChainAfterBattle(void)
+{
+    if (gDexnavBattle)
+    {
+        if (gBattleOutcome == B_OUTCOME_WON || gBattleOutcome == B_OUTCOME_CAUGHT)
+            IncrementDexNavChain();
+        return;
+    }
+    if (gBattleTypeFlags & (BATTLE_TYPE_TRAINER | BATTLE_TYPE_LINK | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_SAFARI))
+        return;
+    if (GetMonData(&gEnemyParty[0], MON_DATA_SPECIES) != (VarGet(VAR_DEXNAV_SPECIES) & MASK_SPECIES))
+        gSaveBlock1Ptr->dexNavChain = 0;
 }

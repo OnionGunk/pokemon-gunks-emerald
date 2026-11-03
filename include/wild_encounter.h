@@ -42,7 +42,12 @@ u16 GetCurrentMapWildMonHeaderId(void);
 u8 ChooseWildMonIndex_Land(void);
 u8 ChooseWildMonIndex_WaterRock(void);
 u8 ChooseWildMonLevel(const struct WildPokemon *wildPokemon);
-bool8 GunkRollWildMonForDexNav(u16 species, bool8 water);
+struct GunkWildRoll
+{
+    u32 personality;
+    u16 ivs[2]; // the IV words CreateBoxMon reads: 5 bits per stat
+};
+bool8 GunkRollWildMonForDexNav(u16 species, bool8 water, struct GunkWildRoll *peek);
 u8 ChooseHiddenMonIndex(void);
 bool32 MapHasNoEncounterData(void);
 

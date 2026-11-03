@@ -415,6 +415,58 @@ void CreateWildMon(u16 species, u8 level)
 
     CreateMonWithNature(&gEnemyParty[0], species, level, USE_RANDOM_IVS, PickWildMonNature());
 }
+
+// Gunk's: the random numbers CreateWildMon would use (same calls, same order), without making the Pokemon:
+// its personality and the two IV words. Lets the DexNav weigh many rolls cheaply, then make only the one it keeps.
+static void GunkPeekWildMon(u16 species, struct GunkWildRoll *roll)
+{
+    bool32 checkCuteCharm = TRUE;
+    u8 gender = MON_GENDERLESS, nature;
+    u32 personality;
+
+    switch (gSpeciesInfo[species].genderRatio)
+    {
+    case MON_MALE:
+    case MON_FEMALE:
+    case MON_GENDERLESS:
+        checkCuteCharm = FALSE;
+        break;
+    }
+
+    if (checkCuteCharm
+        && !GetMonData(&gPlayerParty[0], MON_DATA_SANITY_IS_EGG)
+        && GetMonAbility(&gPlayerParty[0]) == ABILITY_CUTE_CHARM
+        && Random() % 3 != 0)
+    {
+        u16 leadingMonSpecies = GetMonData(&gPlayerParty[0], MON_DATA_SPECIES);
+        u32 leadingMonPersonality = GetMonData(&gPlayerParty[0], MON_DATA_PERSONALITY);
+
+        gender = GetGenderFromSpeciesAndPersonality(leadingMonSpecies, leadingMonPersonality);
+        if (gender == MON_FEMALE)
+            gender = MON_MALE;
+        else
+            gender = MON_FEMALE;
+        nature = PickWildMonNature();
+        do
+        {
+            personality = Random32();
+        }
+        while (nature != GetNatureFromPersonality(personality)
+            || gender != GetGenderFromSpeciesAndPersonality(species, personality));
+    }
+    else
+    {
+        nature = PickWildMonNature();
+        do
+        {
+            personality = Random32();
+        }
+        while (nature != GetNatureFromPersonality(personality));
+    }
+    roll->personality = personality;
+    roll->ivs[0] = Random(); // CreateBoxMon: HP, Attack, Defense
+    roll->ivs[1] = Random(); // Speed, Sp. Attack, Sp. Defense
+}
 #ifdef BUGFIX
 #define TRY_GET_ABILITY_INFLUENCED_WILD_MON_INDEX(wildPokemon, type, ability, ptr, count) TryGetAbilityInfluencedWildMonIndex(wildPokemon, type, ability, ptr, count)
 #else
@@ -997,8 +1049,9 @@ bool32 MapHasNoEncounterData(void)
 
 // Gunk's: one ordinary wild encounter roll of this species for the DexNav: the slot and level rolls, then
 // CreateWildMon (nature, personality loop, IVs), exactly as a real encounter makes them. Rolls of other slots
-// are thrown away before the Pokemon is made. Returns TRUE with the Pokemon in gEnemyParty[0].
-bool8 GunkRollWildMonForDexNav(u16 species, bool8 water)
+// are thrown away before the Pokemon is made. Returns TRUE with the Pokemon in gEnemyParty[0], or with only
+// its personality and IVs in *peek when peek is not NULL (the same random numbers, much faster).
+bool8 GunkRollWildMonForDexNav(u16 species, bool8 water, struct GunkWildRoll *peek)
 {
     u16 headerId = GetCurrentMapWildMonHeaderId();
     const struct WildPokemonInfo *info;
@@ -1012,6 +1065,14 @@ bool8 GunkRollWildMonForDexNav(u16 species, bool8 water)
     index = water ? ChooseWildMonIndex_WaterRock() : ChooseWildMonIndex_Land();
     if (info->wildPokemon[index].species != species)
         return FALSE;
-    CreateWildMon(species, ChooseWildMonLevel(&info->wildPokemon[index]));
+    if (peek != NULL)
+    {
+        ChooseWildMonLevel(&info->wildPokemon[index]);
+        GunkPeekWildMon(species, peek);
+    }
+    else
+    {
+        CreateWildMon(species, ChooseWildMonLevel(&info->wildPokemon[index]));
+    }
     return TRUE;
 }
