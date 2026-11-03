@@ -302,7 +302,7 @@ static const u8 *GetInteractedObjectEventScript(struct MapPosition *position, u8
     u8 objectEventId;
     const u8 *script;
 
-    objectEventId = GetObjectEventIdByPosition(position->x, position->y, position->elevation);
+    objectEventId = GunkGetObjectEventIdByPositionPreferPerson(position->x, position->y, position->elevation);
     if (objectEventId == OBJECT_EVENTS_COUNT || gObjectEvents[objectEventId].localId == LOCALID_PLAYER)
     {
         if (MetatileBehavior_IsCounter(metatileBehavior) != TRUE)

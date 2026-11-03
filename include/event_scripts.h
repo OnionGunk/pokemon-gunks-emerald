@@ -5,6 +5,13 @@ extern const u8 EventScript_Follower[];
 extern const u8 EventScript_FollowerEnd[];
 extern const u8 EventScript_FollowerGeneric[];
 extern const u8 EventScript_FollowerLovesYou[];
+// Gunk's follower lines (as Gunk's FireRed and Black), picked in ScrFunc_getfolloweraction
+extern const u8 gText_GunkFollowerTired[];
+extern const u8 gText_GunkFollowerWary[];
+extern const u8 gText_GunkFollowerShy[];
+extern const u8 gText_GunkFollowerSteady[];
+extern const u8 gText_GunkFollowerHappy[];
+extern const u8 gText_GunkFollowerDevoted[];
 
 extern const u8 EventScript_FollowerIsShivering[];
 extern const u8 EventScript_FollowerNostalgia[];

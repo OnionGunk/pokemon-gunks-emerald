@@ -4,6 +4,31 @@ gText_FollowerLovesYou::
 gText_FollowerLostInThought::
 	.string "{STR_VAR_1} seems lost in thought.$"
 
+@ Gunk's: the lines Gunk's FireRed and Black give, by friendship (or tired, under a quarter of its HP)
+gText_GunkFollowerTired::
+	.string "{STR_VAR_1} is worn out.\n"
+	.string "It could use a rest.$"
+
+gText_GunkFollowerWary::
+	.string "{STR_VAR_1} keeps a little distance.\n"
+	.string "It doesn't quite trust you yet.$"
+
+gText_GunkFollowerShy::
+	.string "{STR_VAR_1} glances at you,\n"
+	.string "then looks away.$"
+
+gText_GunkFollowerSteady::
+	.string "{STR_VAR_1} is keeping pace\n"
+	.string "right behind you.$"
+
+gText_GunkFollowerHappy::
+	.string "{STR_VAR_1} is following you\n"
+	.string "happily.$"
+
+gText_GunkFollowerDevoted::
+	.string "{STR_VAR_1} is beaming!\n"
+	.string "It would follow you anywhere.$"
+
 gText_FollowerDefault::
 	.string "ERROR 404: Script not found.$"
 

@@ -2236,6 +2236,31 @@ bool8 ScrFunc_getfolloweraction(struct ScriptContext *ctx) // Essentially a big 
     ScriptJump(ctx, EventScript_FollowerEnd);
     species = GetMonData(mon, MON_DATA_SPECIES);
     multi = GetMonData(mon, MON_DATA_FRIENDSHIP);
+    // Gunk's: the line by how it feels, as on Gunk's FireRed and Black. Under a quarter of its HP it's always
+    // tired; otherwise half the time it gets the line for its friendship, and the rest of the time the pick below
+    // (where a Pokemon with 100 or more friendship isn't upset or angry with you)
+    if (mon->hp * 4 < mon->maxHP || (Random() & 1)) {
+        static const u8 *const sGunkLines[] = {gText_GunkFollowerTired, gText_GunkFollowerWary, gText_GunkFollowerShy,
+                                               gText_GunkFollowerSteady, gText_GunkFollowerHappy, gText_GunkFollowerDevoted};
+        static const u8 sGunkEmotes[] = {FOLLOWER_EMOTION_SAD, FOLLOWER_EMOTION_PENSIVE, FOLLOWER_EMOTION_NEUTRAL,
+                                         FOLLOWER_EMOTION_HAPPY, FOLLOWER_EMOTION_HAPPY, FOLLOWER_EMOTION_LOVE};
+        if (mon->hp * 4 < mon->maxHP)
+            i = 0;
+        else if (multi == 255)
+            i = 5;
+        else if (multi >= 200)
+            i = 4;
+        else if (multi >= 100)
+            i = 3;
+        else if (multi >= 50)
+            i = 2;
+        else
+            i = 1;
+        ObjectEventEmote(objEvent, sGunkEmotes[i]);
+        ctx->data[0] = (u32) sGunkLines[i];
+        ScriptCall(ctx, EventScript_FollowerGeneric);
+        return FALSE;
+    }
     if (multi > 80) {
         emotion_weight[FOLLOWER_EMOTION_HAPPY] = 20;
         emotion_weight[FOLLOWER_EMOTION_UPSET] = 5;
@@ -2246,6 +2271,10 @@ bool8 ScrFunc_getfolloweraction(struct ScriptContext *ctx) // Essentially a big 
     if (multi > 170) {
         emotion_weight[FOLLOWER_EMOTION_HAPPY] = 30;
         emotion_weight[FOLLOWER_EMOTION_LOVE] = 30;
+    }
+    if (multi >= 100) {
+        emotion_weight[FOLLOWER_EMOTION_UPSET] = 0;
+        emotion_weight[FOLLOWER_EMOTION_ANGRY] = 0;
     }
     // Special C-based conditions follower
     // Weather-related
@@ -2947,6 +2976,25 @@ u8 GetObjectEventIdByPosition(u16 x, u16 y, u8 elevation)
         }
     }
     return OBJECT_EVENTS_COUNT;
+}
+
+// Gunk's: GetObjectEventIdByPosition for the A button. The follower can stand where a person hidden by a flag
+// appears later (addobject); on a shared tile this returns the person, not the follower
+u8 GunkGetObjectEventIdByPositionPreferPerson(u16 x, u16 y, u8 elevation)
+{
+    u8 i, found = GetObjectEventIdByPosition(x, y, elevation);
+
+    if (found == OBJECT_EVENTS_COUNT || gObjectEvents[found].localId != OBJ_EVENT_ID_FOLLOWER)
+        return found;
+    for (i = found + 1; i < OBJECT_EVENTS_COUNT; i++)
+    {
+        if (gObjectEvents[i].active
+         && gObjectEvents[i].currentCoords.x == x
+         && gObjectEvents[i].currentCoords.y == y
+         && ObjectEventDoesElevationMatch(&gObjectEvents[i], elevation))
+            return i;
+    }
+    return found;
 }
 
 static bool8 ObjectEventDoesElevationMatch(struct ObjectEvent *objectEvent, u8 elevation)
