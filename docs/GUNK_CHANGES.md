@@ -24,8 +24,8 @@ save suite passed on that build.
 | 16 | Move Tutor | Move Relearner in Fallarbor (Heart Scale) | MOVE TUTOR row on every PC: a free relearner | **Done** (taught Teleport, back to the PC menu, log off) |
 | 17 | Faster eggs | Retail egg cycles | An egg cycle every 128 steps instead of 255 | **Done** (a 0-cycle egg hatched after 127 steps) |
 | 18 | More PC boxes | 14 boxes | 16 boxes (user's choice, `docs/PC_BOXES_PLAN.md`): 15 sectors per slot, Hall of Fame 33 teams in sector 30, no e-Reader Trainer Hill save. Old saves don't load | **Done** for saving (suite 4/4 on the 15-sector layout); boxes 15-16 not yet browsed in the PC |
-| 19 | DexNav | — | Port | Planned |
-| 20 | Following Pokémon | — | Port | Planned |
+| 19 | DexNav | — | ghoulslash's DexNav, changed: legal rolls only (extra rolls instead of edited IVs or forced shiny PIDs), no egg moves, no hidden abilities (the screen shows the abilities), search levels in the PC storage's free space, chain in a retail padding byte. Comes with the Pokédex; R searches | Built; screen checked, search not yet |
+| 20 | Following Pokémon | — | aarant's `followers-legacy` (no save-size change). Gunk's commits sit on top of that branch (pret 2026-02), see `docs/ENGINE.md` | Built; Kadabra followed through grass |
 | — | Honey trees, Poké Radar info | Don't exist in Emerald | Skip | — |
 | — | Running Shoes touch button, Poké Ball follower toggle | Don't exist / N/A | Skip | — |
 

@@ -2143,22 +2143,20 @@ static void PrintCurrentSpeciesInfo(void)
         AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, SEARCH_LEVEL_Y, sFontColor_Black, 0, gStringVar4);
     }
     
-    //hidden ability
+    // Gunk's: the species' abilities (Gen 3 has no hidden abilities; the label reads ABILITY)
     if (species == SPECIES_NONE)
     {
         AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, sText_DexNav_NoInfo);
     }
     else if (GetSetPokedexFlag(dexNum, FLAG_GET_CAUGHT))
     {
-        #ifdef BATTLE_ENGINE
-        if (gSpeciesInfo[species].abilities[2] != ABILITY_NONE)
-            AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, gAbilityNames[gSpeciesInfo[species].abilities[2]]);
-        #else
-        if (gSpeciesInfo[species].abilityHidden != ABILITY_NONE)           
-            AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, gAbilityNames[gSpeciesInfo[species].abilityHidden]);
-        #endif
-        else
-            AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, gText_None);
+        u8 *end = StringCopy(gStringVar4, gAbilityNames[gSpeciesInfo[species].abilities[0]]);
+        if (gSpeciesInfo[species].abilities[1] != ABILITY_NONE)
+        {
+            *end++ = CHAR_SLASH;
+            StringCopy(end, gAbilityNames[gSpeciesInfo[species].abilities[1]]);
+        }
+        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, gStringVar4);
     }
     else
     {

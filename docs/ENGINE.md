@@ -1,8 +1,12 @@
 # Engine decision: pret `pokeemerald` + agbcc
 
-Gunk's Emerald is built on [pret/pokeemerald](https://github.com/pret/pokeemerald) (branch `gunk`, forked from
-`731ad5bfd`), compiled with pret's [agbcc](https://github.com/pret/agbcc), the same old GCC the retail game was
-built with.
+Gunk's Emerald is built on [pret/pokeemerald](https://github.com/pret/pokeemerald), compiled with pret's
+[agbcc](https://github.com/pret/agbcc), the same old GCC the retail game was built with.
+
+The working branch is `gunk-followers`: Gunk's commits on top of aarant's `followers-legacy` branch, which is
+pret from February 2026 plus following Pokémon, then ghoulslash's DexNav merged in. (The first Gunk's
+commits were made on pret master `731ad5bfd`, branch `gunk`; pret has since moved graphics to a new build
+pipeline that the follower branch predates, so the commits were moved rather than converting ~800 sprites.)
 
 ## Why not `pokeemerald-expansion`
 

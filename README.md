@@ -6,17 +6,22 @@ It keeps the game's difficulty and story as they are and takes the grind and fri
 > **Status: in development.** No release yet. The first release comes once the hack is playable start to
 > finish. Progress on each change is tracked in [`docs/GUNK_CHANGES.md`](docs/GUNK_CHANGES.md).
 
-## Features (planned)
+## Features
 
-- **DexNav.** See which Pokémon live on the route, then search for one. Searches roll legal wild encounters,
-  and search levels and chains raise the odds of good IVs and shinies.
-- **Pokémon follow you.**
-- **More PC boxes** than the original 14.
-- **Faster play:** instant text, a faster EXP bar, auto-run, faster egg hatching.
-- **Items:** reusable TMs, two registered items, bag sorting, a prompt to use another Repel when one runs out,
-  and an Endless Repel toggle.
-- **Pokémon:** IV and EV view in the summary, Exp. All, vitamins up to 252 EVs, and trade evolutions without
-  trading. HM moves work without teaching the move, and every Pokémon Center has a Move Tutor.
+- **DexNav.** Comes with the Pokédex. It shows which Pokémon live on the route; pick one, press **R** in the
+  grass and sneak up on it. Every DexNav Pokémon is an ordinary, legal wild roll: search levels, chains and
+  stars give extra rolls for good IVs and shinies instead of editing the Pokémon.
+- **Pokémon follow you**, with emotes and messages, for all 386 species.
+- **16 PC boxes** (14 in the original game).
+- **Faster play:** instant text (INST. after FAST in Options), a faster EXP bar, auto-run (hold B to walk),
+  eggs hatch in half the steps. New games start on FAST text.
+- **Items:** reusable TMs, a second registered item on **L**, **Start** sorts the bag, a prompt to use
+  another Repel when one runs out, and two key items Mom gives you with the Running Shoes: the
+  **Endless Repel** and the **Exp. All** (USE turns them on and off).
+- **Pokémon:** **A** on the summary's Skills page shows IVs, then EVs. Vitamins work up to 252 EVs. Trade
+  evolutions happen without trading: at Lv. 36, or by using the trade item like an evolution stone (the
+  Everstone still stops them). Field moves work without teaching the move if a Pokémon could learn it from
+  a TM or HM in your bag (badges still needed), and every PC has a free **Move Tutor**.
 
 Battle mechanics, trainers, wild Pokémon and the story are Emerald's own. Save safety comes first: every build
 passes an emulator test suite that covers save cycles, crashes during a save and damaged-save recovery, and
@@ -48,8 +53,11 @@ Follow pret's [`INSTALL.md`](INSTALL.md), then run `make`. A clean build reprodu
 
 - [pret](https://github.com/pret/pokeemerald) for the Emerald decompilation this hack is built on, and for
   [agbcc](https://github.com/pret/agbcc).
-- The DexNav idea comes from later Pokémon games and fan hacks such as Pokémon Unbound.
-- Further credits are added here as features are ported.
+- **Following Pokémon:** [aarant's pokeemerald followers](https://github.com/aarant/pokeemerald)
+  (`followers-legacy` branch), with its sprites, emotes and messages.
+- **DexNav:** [ghoulslash's pokeemerald DexNav](https://github.com/ghoulslash/pokeemerald) (`dexnav` branch)
+  and its contributors; changed here to give only legal Gen 3 Pokémon.
+- The DexNav idea comes from Pokémon Omega Ruby and Alpha Sapphire and fan hacks such as Pokémon Unbound.
 
 Pokémon is © Nintendo, Creatures Inc. and GAME FREAK inc. This is a non-commercial fan project and contains
 no ROM data; you need your own legally dumped copy of the game.
