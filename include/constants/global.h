@@ -154,4 +154,6 @@
 #define CONNECTION_DIVE     5
 #define CONNECTION_EMERGE   6
 
+#define USE_DEXNAV_SEARCH_LEVELS      TRUE  // Gunk's: stored in PokemonStorage, which has room
+
 #endif // GUARD_CONSTANTS_GLOBAL_H
