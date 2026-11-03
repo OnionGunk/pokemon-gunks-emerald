@@ -339,6 +339,7 @@ SECTIONS {
         src/battle_transition_frontier.o(.text);
         src/international_string_util.o(.text);
         src/dexnav.o(.text);
+        src/gunk_quick_ball.o(.text);
     } > ROM =0
 
     script_data :
@@ -703,6 +704,7 @@ SECTIONS {
         src/m4a_tables.o(.rodata);
         data/sound_data.o(.rodata);
         src/dexnav.o(.rodata);
+        src/gunk_quick_ball.o(.rodata);
     } > ROM =0
 
     song_data :

@@ -952,7 +952,6 @@ void ItemUseInBattle_PokeBall(u8 taskId)
 {
     if (IsPlayerPartyAndPokemonStorageFull() == FALSE) // have room for mon?
     {
-        VarSet(VAR_GUNK_LAST_BALL, gSpecialVar_ItemId); // Gunk's: Quick Ball offers it next
         RemoveBagItem(gSpecialVar_ItemId, 1);
         if (CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE)
             Task_FadeAndCloseBagMenu(taskId);
