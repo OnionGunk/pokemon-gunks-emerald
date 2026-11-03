@@ -1788,7 +1788,7 @@ bool8 ScrCmd_checkpartymove(struct ScriptContext *ctx)
         u16 species = GetMonData(&gPlayerParty[i], MON_DATA_SPECIES, NULL);
         if (!species)
             break;
-        if (!GetMonData(&gPlayerParty[i], MON_DATA_IS_EGG) && MonKnowsMove(&gPlayerParty[i], move) == TRUE)
+        if (GunkMonCanUseFieldMove(&gPlayerParty[i], move)) // Gunk's (retail: knows the move, not an egg)
         {
             gSpecialVar_Result = i;
             gSpecialVar_0x8004 = species;

@@ -397,21 +397,22 @@ static void DrawOptionMenuChoice(const u8 *text, u8 x, u8 y, u8 style)
 
 static u8 TextSpeed_ProcessInput(u8 selection)
 {
+    // Gunk's: right on FAST picks INSTANT, which is drawn in FAST's place
     if (JOY_NEW(DPAD_RIGHT))
     {
-        if (selection <= 1)
+        if (selection < OPTIONS_TEXT_SPEED_INSTANT)
             selection++;
         else
-            selection = 0;
+            selection = OPTIONS_TEXT_SPEED_SLOW;
 
         sArrowPressed = TRUE;
     }
     if (JOY_NEW(DPAD_LEFT))
     {
-        if (selection != 0)
+        if (selection != OPTIONS_TEXT_SPEED_SLOW)
             selection--;
         else
-            selection = 2;
+            selection = OPTIONS_TEXT_SPEED_INSTANT;
 
         sArrowPressed = TRUE;
     }
@@ -422,23 +423,26 @@ static void TextSpeed_DrawChoices(u8 selection)
 {
     u8 styles[3];
     s32 widthSlow, widthMid, widthFast, xMid;
+    const u8 *fast = (selection == OPTIONS_TEXT_SPEED_INSTANT) ? gText_TextSpeedInstant : gText_TextSpeedFast;
 
     styles[0] = 0;
     styles[1] = 0;
     styles[2] = 0;
-    styles[selection] = 1;
+    styles[min(selection, OPTIONS_TEXT_SPEED_FAST)] = 1;
+
+    FillWindowPixelRect(WIN_OPTIONS, PIXEL_FILL(1), 104, YPOS_TEXTSPEED, 96, 16);
 
     DrawOptionMenuChoice(gText_TextSpeedSlow, 104, YPOS_TEXTSPEED, styles[0]);
 
     widthSlow = GetStringWidth(FONT_NORMAL, gText_TextSpeedSlow, 0);
     widthMid = GetStringWidth(FONT_NORMAL, gText_TextSpeedMid, 0);
-    widthFast = GetStringWidth(FONT_NORMAL, gText_TextSpeedFast, 0);
+    widthFast = GetStringWidth(FONT_NORMAL, gText_TextSpeedFast, 0); // FAST's width keeps MID where it was
 
     widthMid -= 94;
     xMid = (widthSlow - widthMid - widthFast) / 2 + 104;
     DrawOptionMenuChoice(gText_TextSpeedMid, xMid, YPOS_TEXTSPEED, styles[1]);
 
-    DrawOptionMenuChoice(gText_TextSpeedFast, GetStringRightAlignXOffset(FONT_NORMAL, gText_TextSpeedFast, 198), YPOS_TEXTSPEED, styles[2]);
+    DrawOptionMenuChoice(fast, GetStringRightAlignXOffset(FONT_NORMAL, fast, 198), YPOS_TEXTSPEED, styles[2]);
 }
 
 static u8 BattleScene_ProcessInput(u8 selection)

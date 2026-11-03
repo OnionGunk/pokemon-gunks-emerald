@@ -3,6 +3,7 @@
 #include "battle_pike.h"
 #include "battle_pyramid.h"
 #include "event_data.h"
+#include "item_use.h"
 #include "fieldmap.h"
 #include "field_player_avatar.h"
 #include "link.h"
@@ -23,6 +24,7 @@
 #include "constants/weather.h"
 
 extern const u8 EventScript_RepelWoreOff[];
+extern const u8 EventScript_GunkRepelWoreOff[];
 
 #define MAX_ENCOUNTER_RATE 2880
 
@@ -864,7 +866,11 @@ bool8 UpdateRepelCounter(void)
         VarSet(VAR_REPEL_STEP_COUNT, steps);
         if (steps == 0)
         {
-            ScriptContext_SetupScript(EventScript_RepelWoreOff);
+            // Gunk's: offer another Repel (not in the Battle Pyramid, which has its own bag)
+            if (VarGet(VAR_GUNK_LAST_REPEL) != ITEM_NONE && CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE)
+                ScriptContext_SetupScript(EventScript_GunkRepelWoreOff);
+            else
+                ScriptContext_SetupScript(EventScript_RepelWoreOff);
             return TRUE;
         }
     }
@@ -875,7 +881,8 @@ static bool8 IsWildLevelAllowedByRepel(u8 wildLevel)
 {
     u8 i;
 
-    if (!VarGet(VAR_REPEL_STEP_COUNT))
+    // Gunk's: the Endless Repel works like a Repel that never runs out
+    if (!VarGet(VAR_REPEL_STEP_COUNT) && !GunkSettingOn(GUNK_SETTING_ENDLESS_REPEL))
         return TRUE;
 
     for (i = 0; i < PARTY_SIZE; i++)

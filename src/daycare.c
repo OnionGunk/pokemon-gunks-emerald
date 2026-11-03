@@ -895,7 +895,8 @@ static bool8 TryProduceOrHatchEgg(struct DayCare *daycare)
     }
 
     // Try to hatch Egg
-    if (++daycare->stepCounter == 255)
+    // Gunk's: an egg cycle every 128 steps instead of 255, so eggs hatch in about half the steps
+    if ((++daycare->stepCounter & 0x7F) == 0x7F)
     {
         u32 eggCycles;
         u8 toSub = GetEggCyclesToSubtract();

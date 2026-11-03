@@ -19,8 +19,9 @@ EventScript_AccessPC::
 	switch VAR_RESULT
 	case 0, EventScript_AccessPokemonStorage
 	case 1, EventScript_AccessPlayersPC
-	case 2, EventScript_AccessHallOfFame
-	case 3, EventScript_TurnOffPC
+	case 2, EventScript_GunkPCMoveTutor
+	case 3, EventScript_AccessHallOfFame
+	case 4, EventScript_TurnOffPC
 	case MULTI_B_PRESSED, EventScript_TurnOffPC
 	end
 
@@ -64,3 +65,37 @@ EventScript_AccessHallOfFame::
 	waitstate
 	goto EventScript_AccessPC
 	end
+
+@ Gunk's: a free move relearner on every PC (data/maps/FallarborTown_MoveRelearnersHouse has the Heart Scale one)
+EventScript_GunkPCMoveTutor::
+	playse SE_PC_LOGIN
+	msgbox Text_GunkMoveTutorWhichMon, MSGBOX_DEFAULT
+	special ChooseMonForMoveRelearner
+	goto_if_eq VAR_0x8004, PARTY_NOTHING_CHOSEN, EventScript_PCMainMenu
+	special IsSelectedMonEgg
+	goto_if_eq VAR_RESULT, TRUE, EventScript_GunkPCMoveTutorEgg
+	goto_if_eq VAR_0x8005, 0, EventScript_GunkPCMoveTutorNoMoves
+	special TeachMoveRelearnerMove
+	goto EventScript_GunkPCMoveTutor
+	end
+
+EventScript_GunkPCMoveTutorEgg::
+	msgbox Text_GunkMoveTutorEgg, MSGBOX_DEFAULT
+	goto EventScript_GunkPCMoveTutor
+	end
+
+EventScript_GunkPCMoveTutorNoMoves::
+	msgbox Text_GunkMoveTutorNoMoves, MSGBOX_DEFAULT
+	goto EventScript_GunkPCMoveTutor
+	end
+
+Text_GunkMoveTutorWhichMon:
+	.string "MOVE TUTOR: Which POKéMON should\n"
+	.string "remember a move?$"
+
+Text_GunkMoveTutorEgg:
+	.string "An EGG can't learn moves.$"
+
+Text_GunkMoveTutorNoMoves:
+	.string "There's no move this POKéMON can\n"
+	.string "remember.$"

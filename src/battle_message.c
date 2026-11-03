@@ -1954,7 +1954,7 @@ static const struct BattleWindowText *const sBattleTextOnWindowsInfo[] =
     [B_WIN_TYPE_ARENA]  = sTextOnWindowsInfo_Arena
 };
 
-static const u8 sRecordedBattleTextSpeeds[] = {8, 4, 1, 0};
+static const u8 sRecordedBattleTextSpeeds[] = {8, 4, 1, 1}; // Gunk's: INSTANT plays back like FAST (retail: 0)
 
 void BufferStringBattle(u16 stringID)
 {

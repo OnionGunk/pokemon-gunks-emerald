@@ -899,6 +899,11 @@ LittlerootTown_EventScript_GiveRunningShoes::
 	waitfanfare
 	setflag FLAG_RECEIVED_RUNNING_SHOES
 	msgbox LittlerootTown_Text_ExplainRunningShoes, MSGBOX_DEFAULT
+	@ Gunk's: the Endless Repel and the Exp. All come with the shoes (both start off)
+	msgbox LittlerootTown_Text_GunkTakeTheseToo, MSGBOX_DEFAULT
+	giveitem ITEM_ENDLESS_REPEL
+	giveitem ITEM_EXP_ALL
+	msgbox LittlerootTown_Text_GunkExplainKeyItems, MSGBOX_DEFAULT
 	msgbox LittlerootTown_Text_ComeHomeIfAnythingHappens, MSGBOX_DEFAULT
 	closemessage
 	delay 30
@@ -937,10 +942,20 @@ LittlerootTown_Text_SwitchShoesWithRunningShoes:
 LittlerootTown_Text_ExplainRunningShoes:
 	.string "MOM: {PLAYER}, those shoes came with\n"
 	.string "instructions.\p"
-	.string "“Press the B Button while wearing these\n"
-	.string "RUNNING SHOES to run extra-fast!\p"
+	.string "“Wear these RUNNING SHOES to run\n"
+	.string "extra-fast! Hold the B Button to walk.\p"
 	.string "“Slip on these RUNNING SHOES and race\n"
 	.string "in the great outdoors!”$"
+
+LittlerootTown_Text_GunkTakeTheseToo:
+	.string "MOM: Oh, and take these, too.$"
+
+LittlerootTown_Text_GunkExplainKeyItems:
+	.string "MOM: USE them from your BAG to turn\n"
+	.string "them on or off.\p"
+	.string "The ENDLESS REPEL keeps weak POKéMON\n"
+	.string "away, and the EXP. ALL shares EXP.\n"
+	.string "with the POKéMON that didn't battle.$"
 
 LittlerootTown_Text_ComeHomeIfAnythingHappens:
 	.string "… … … … … … … …\n"

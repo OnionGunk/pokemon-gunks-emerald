@@ -1238,6 +1238,16 @@ static void Task_BagMenu_HandleInput(u8 taskId)
                 }
                 return;
             }
+            // Gunk's: Start sorts the pocket by item number (the game's own order: kind of item, then name)
+            if (JOY_NEW(START_BUTTON) && CanSwapItems() == TRUE)
+            {
+                PlaySE(SE_SELECT);
+                DestroyListMenuTask(tListTaskId, scrollPos, cursorPos);
+                SortBerriesOrTMHMs(&gBagPockets[gBagPosition.pocket]);
+                LoadBagItemListBuffers(gBagPosition.pocket);
+                tListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, *scrollPos, *cursorPos);
+                return;
+            }
             break;
         }
 

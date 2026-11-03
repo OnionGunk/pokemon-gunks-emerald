@@ -275,6 +275,8 @@ static void BufferLeftColumnStats(void);
 static void PrintLeftColumnStats(void);
 static void BufferRightColumnStats(void);
 static void PrintRightColumnStats(void);
+static u16 GunkStatsViewValue(u8 stat, u16 value);
+static void GunkRedrawStatColumns(void);
 static void PrintExpPointsNextLevel(void);
 static void PrintBattleMoves(void);
 static void Task_PrintBattleMoves(u8);
@@ -747,6 +749,16 @@ static const u8 sMemoNatureTextColor[] = _("{COLOR LIGHT_RED}{SHADOW GREEN}");
 static const u8 sMemoMiscTextColor[] = _("{COLOR WHITE}{SHADOW DARK_GRAY}"); // This is also affected by palettes, apparently
 static const u8 sStatsLeftColumnLayout[] = _("{DYNAMIC 0}/{DYNAMIC 1}\n{DYNAMIC 2}\n{DYNAMIC 3}");
 static const u8 sStatsRightColumnLayout[] = _("{DYNAMIC 0}\n{DYNAMIC 1}\n{DYNAMIC 2}");
+
+// Gunk's: A on the skills page cycles the stat columns through stats, IVs and EVs
+enum {
+    GUNK_STATS_VIEW_STATS,
+    GUNK_STATS_VIEW_IVS,
+    GUNK_STATS_VIEW_EVS,
+    GUNK_STATS_VIEW_COUNT,
+};
+EWRAM_DATA static u8 sGunkStatsView = 0;
+static const u8 sGunkStatsLeftColumnLayout[] = _("{DYNAMIC 0}\n{DYNAMIC 2}\n{DYNAMIC 3}"); // no current/max HP
 static const u8 sMovesPPLayout[] = _("{PP}{DYNAMIC 0}/{DYNAMIC 1}");
 
 #define TAG_MOVE_SELECTOR 30000
@@ -1100,6 +1112,7 @@ static const u16 sMarkings_Pal[] = INCBIN_U16("graphics/summary_screen/markings.
 void ShowPokemonSummaryScreen(u8 mode, void *mons, u8 monIndex, u8 maxMonIndex, void (*callback)(void))
 {
     sMonSummaryScreen = AllocZeroed(sizeof(*sMonSummaryScreen));
+    sGunkStatsView = GUNK_STATS_VIEW_STATS;
     sMonSummaryScreen->mode = mode;
     sMonSummaryScreen->monList.mons = mons;
     sMonSummaryScreen->curMonIndex = monIndex;
@@ -1551,7 +1564,16 @@ static void Task_HandleInput(u8 taskId)
         }
         else if (JOY_NEW(A_BUTTON))
         {
-            if (sMonSummaryScreen->currPageIndex != PSS_PAGE_SKILLS)
+            if (sMonSummaryScreen->currPageIndex == PSS_PAGE_SKILLS)
+            {
+                if (!sMonSummaryScreen->summary.isEgg)
+                {
+                    PlaySE(SE_SELECT);
+                    sGunkStatsView = (sGunkStatsView + 1) % GUNK_STATS_VIEW_COUNT;
+                    GunkRedrawStatColumns();
+                }
+            }
+            else
             {
                 if (sMonSummaryScreen->currPageIndex == PSS_PAGE_INFO)
                 {
@@ -3395,17 +3417,25 @@ static void BufferLeftColumnStats(void)
     u8 *attackString = Alloc(8);
     u8 *defenseString = Alloc(8);
 
-    ConvertIntToDecimalStringN(currentHPString, sMonSummaryScreen->summary.currentHP, STR_CONV_MODE_RIGHT_ALIGN, 3);
-    ConvertIntToDecimalStringN(maxHPString, sMonSummaryScreen->summary.maxHP, STR_CONV_MODE_RIGHT_ALIGN, 3);
-    ConvertIntToDecimalStringN(attackString, sMonSummaryScreen->summary.atk, STR_CONV_MODE_RIGHT_ALIGN, 7);
-    ConvertIntToDecimalStringN(defenseString, sMonSummaryScreen->summary.def, STR_CONV_MODE_RIGHT_ALIGN, 7);
+    if (sGunkStatsView == GUNK_STATS_VIEW_STATS)
+    {
+        ConvertIntToDecimalStringN(currentHPString, sMonSummaryScreen->summary.currentHP, STR_CONV_MODE_RIGHT_ALIGN, 3);
+        ConvertIntToDecimalStringN(maxHPString, sMonSummaryScreen->summary.maxHP, STR_CONV_MODE_RIGHT_ALIGN, 3);
+    }
+    else
+    {
+        ConvertIntToDecimalStringN(currentHPString, GunkStatsViewValue(STAT_HP, 0), STR_CONV_MODE_RIGHT_ALIGN, 7);
+        maxHPString[0] = EOS;
+    }
+    ConvertIntToDecimalStringN(attackString, GunkStatsViewValue(STAT_ATK, sMonSummaryScreen->summary.atk), STR_CONV_MODE_RIGHT_ALIGN, 7);
+    ConvertIntToDecimalStringN(defenseString, GunkStatsViewValue(STAT_DEF, sMonSummaryScreen->summary.def), STR_CONV_MODE_RIGHT_ALIGN, 7);
 
     DynamicPlaceholderTextUtil_Reset();
     DynamicPlaceholderTextUtil_SetPlaceholderPtr(0, currentHPString);
     DynamicPlaceholderTextUtil_SetPlaceholderPtr(1, maxHPString);
     DynamicPlaceholderTextUtil_SetPlaceholderPtr(2, attackString);
     DynamicPlaceholderTextUtil_SetPlaceholderPtr(3, defenseString);
-    DynamicPlaceholderTextUtil_ExpandPlaceholders(gStringVar4, sStatsLeftColumnLayout);
+    DynamicPlaceholderTextUtil_ExpandPlaceholders(gStringVar4, sGunkStatsView == GUNK_STATS_VIEW_STATS ? sStatsLeftColumnLayout : sGunkStatsLeftColumnLayout);
 
     Free(currentHPString);
     Free(maxHPString);
@@ -3420,9 +3450,9 @@ static void PrintLeftColumnStats(void)
 
 static void BufferRightColumnStats(void)
 {
-    ConvertIntToDecimalStringN(gStringVar1, sMonSummaryScreen->summary.spatk, STR_CONV_MODE_RIGHT_ALIGN, 3);
-    ConvertIntToDecimalStringN(gStringVar2, sMonSummaryScreen->summary.spdef, STR_CONV_MODE_RIGHT_ALIGN, 3);
-    ConvertIntToDecimalStringN(gStringVar3, sMonSummaryScreen->summary.speed, STR_CONV_MODE_RIGHT_ALIGN, 3);
+    ConvertIntToDecimalStringN(gStringVar1, GunkStatsViewValue(STAT_SPATK, sMonSummaryScreen->summary.spatk), STR_CONV_MODE_RIGHT_ALIGN, 3);
+    ConvertIntToDecimalStringN(gStringVar2, GunkStatsViewValue(STAT_SPDEF, sMonSummaryScreen->summary.spdef), STR_CONV_MODE_RIGHT_ALIGN, 3);
+    ConvertIntToDecimalStringN(gStringVar3, GunkStatsViewValue(STAT_SPEED, sMonSummaryScreen->summary.speed), STR_CONV_MODE_RIGHT_ALIGN, 3);
 
     DynamicPlaceholderTextUtil_Reset();
     DynamicPlaceholderTextUtil_SetPlaceholderPtr(0, gStringVar1);
@@ -3434,6 +3464,31 @@ static void BufferRightColumnStats(void)
 static void PrintRightColumnStats(void)
 {
     PrintTextOnWindow(AddWindowFromTemplateList(sPageSkillsTemplate, PSS_DATA_WINDOW_SKILLS_STATS_RIGHT), gStringVar4, 2, 1, 0, 0);
+}
+
+// stat: STAT_HP .. STAT_SPDEF, the order of MON_DATA_HP_IV.. and MON_DATA_HP_EV..
+static u16 GunkStatsViewValue(u8 stat, u16 value)
+{
+    if (sGunkStatsView == GUNK_STATS_VIEW_IVS)
+        return GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_HP_IV + stat);
+    if (sGunkStatsView == GUNK_STATS_VIEW_EVS)
+        return GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_HP_EV + stat);
+    return value;
+}
+
+static void GunkRedrawStatColumns(void)
+{
+    u8 left = AddWindowFromTemplateList(sPageSkillsTemplate, PSS_DATA_WINDOW_SKILLS_STATS_LEFT);
+    u8 right = AddWindowFromTemplateList(sPageSkillsTemplate, PSS_DATA_WINDOW_SKILLS_STATS_RIGHT);
+
+    FillWindowPixelBuffer(left, PIXEL_FILL(0));
+    FillWindowPixelBuffer(right, PIXEL_FILL(0));
+    BufferLeftColumnStats();
+    PrintLeftColumnStats();
+    BufferRightColumnStats();
+    PrintRightColumnStats();
+    CopyWindowToVram(left, COPYWIN_GFX);
+    CopyWindowToVram(right, COPYWIN_GFX);
 }
 
 static void PrintExpPointsNextLevel(void)

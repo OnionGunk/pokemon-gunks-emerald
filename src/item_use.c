@@ -865,6 +865,8 @@ static void Task_UseRepel(u8 taskId)
     if (!IsSEPlaying())
     {
         VarSet(VAR_REPEL_STEP_COUNT, GetItemHoldEffectParam(gSpecialVar_ItemId));
+        if (CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE)
+            VarSet(VAR_GUNK_LAST_REPEL, gSpecialVar_ItemId); // Gunk's: for the Repel prompt
         RemoveUsedItem();
         if (CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE)
             DisplayItemMessage(taskId, FONT_NORMAL, gStringVar4, CloseItemMessage);
@@ -1137,3 +1139,30 @@ void ItemUseOutOfBattle_CannotUse(u8 taskId)
 }
 
 #undef tUsingRegisteredKeyItem
+
+// Gunk's: special for the Repel prompt (data/scripts/repel.inc). The script already took the item.
+void GunkRestartRepel(void)
+{
+    VarSet(VAR_REPEL_STEP_COUNT, GetItemHoldEffectParam(VarGet(VAR_GUNK_LAST_REPEL)));
+}
+
+bool32 GunkSettingOn(u16 setting)
+{
+    return (VarGet(VAR_GUNK_SETTINGS) & setting) != 0;
+}
+
+// Gunk's: USE on the Endless Repel or the Exp. All turns it on or off
+void ItemUseOutOfBattle_GunkToggle(u8 taskId)
+{
+    u16 setting = (gSpecialVar_ItemId == ITEM_EXP_ALL) ? GUNK_SETTING_EXP_ALL : GUNK_SETTING_ENDLESS_REPEL;
+    u16 settings = VarGet(VAR_GUNK_SETTINGS) ^ setting;
+
+    VarSet(VAR_GUNK_SETTINGS, settings);
+    CopyItemName(gSpecialVar_ItemId, gStringVar1);
+    StringExpandPlaceholders(gStringVar4, (settings & setting) ? gText_GunkTurnedOn : gText_GunkTurnedOff);
+    PlaySE(SE_SELECT);
+    if (!gTasks[taskId].data[3]) // tUsingRegisteredKeyItem, #undef'd above
+        DisplayItemMessage(taskId, FONT_NORMAL, gStringVar4, CloseItemMessage);
+    else
+        DisplayItemMessageOnField(taskId, gStringVar4, Task_CloseCantUseKeyItemMessage);
+}

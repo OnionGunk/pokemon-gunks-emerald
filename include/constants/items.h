@@ -63,8 +63,8 @@
 #define ITEM_BLUE_SHARD 49
 #define ITEM_YELLOW_SHARD 50
 #define ITEM_GREEN_SHARD 51
-#define ITEM_034 52
-#define ITEM_035 53
+#define ITEM_ENDLESS_REPEL 52 // Gunk's (retail: unused ITEM_034)
+#define ITEM_EXP_ALL 53       // Gunk's (retail: unused ITEM_035)
 #define ITEM_036 54
 #define ITEM_037 55
 #define ITEM_038 56

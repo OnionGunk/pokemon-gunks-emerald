@@ -978,6 +978,17 @@ static const u8 sMachBikeDesc[] = _(
     "that doubles your\n"
     "speed or better.");
 
+// Gunk's
+static const u8 sGunkEndlessRepelDesc[] = _(
+    "Keeps weak wild\n"
+    "POKéMON away while\n"
+    "it's on. USE: on/off.");
+
+static const u8 sGunkExpAllDesc[] = _(
+    "While it's on, POKé-\n"
+    "MON that didn't fight\n"
+    "get half EXP. and EVs.");
+
 static const u8 sCoinCaseDesc[] = _(
     "A case that holds\n"
     "up to 9,999 COINS.");

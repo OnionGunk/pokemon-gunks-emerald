@@ -2255,6 +2255,8 @@ s32 MoveBattleBar(u8 battler, u8 healthboxSpriteId, u8 whichBar, u8 unused)
         if (expFraction == 0)
             expFraction = 1;
         expFraction = abs(gBattleSpritesDataPtr->battleBars[battler].receivedValue / expFraction);
+        // Gunk's: the EXP bar moves two pixels per frame instead of one
+        expFraction = (expFraction > 0x7FFF) ? 0xFFFF : expFraction * 2;
 
         currentBarValue = CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
                     gBattleSpritesDataPtr->battleBars[battler].oldValue,

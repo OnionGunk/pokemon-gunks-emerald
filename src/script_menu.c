@@ -343,24 +343,28 @@ static void CreatePCMultichoice(void)
     {
         pixelWidth = DisplayTextAndGetWidth(gText_HallOfFame, pixelWidth);
     }
+    pixelWidth = DisplayTextAndGetWidth(gText_GunkMoveTutor, pixelWidth);
 
     width = ConvertPixelWidthToTileWidth(pixelWidth);
 
+    // Gunk's: MOVE TUTOR is the third row (EventScript_AccessPC: 2 = tutor, 3 = Hall of Fame, last = log off)
     // Include Hall of Fame option if player is champion
     if (FlagGet(FLAG_SYS_GAME_CLEAR))
+    {
+        numChoices = 5;
+        windowId = CreateWindowFromRect(0, 0, width, 10);
+        SetStandardWindowBorderStyle(windowId, FALSE);
+        AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_GunkMoveTutor, x, 33, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_HallOfFame, x, 49, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_LogOff, x, 65, TEXT_SKIP_DRAW, NULL);
+    }
+    else
     {
         numChoices = 4;
         windowId = CreateWindowFromRect(0, 0, width, 8);
         SetStandardWindowBorderStyle(windowId, FALSE);
-        AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_HallOfFame, x, 33, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_GunkMoveTutor, x, 33, TEXT_SKIP_DRAW, NULL);
         AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_LogOff, x, 49, TEXT_SKIP_DRAW, NULL);
-    }
-    else
-    {
-        numChoices = 3;
-        windowId = CreateWindowFromRect(0, 0, width, 6);
-        SetStandardWindowBorderStyle(windowId, FALSE);
-        AddTextPrinterParameterized(windowId, FONT_NORMAL, gText_LogOff, x, 33, TEXT_SKIP_DRAW, NULL);
     }
 
     // Change PC name if player has met Lanette

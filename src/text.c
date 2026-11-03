@@ -77,6 +77,7 @@ static const u8 sWindowVerticalScrollSpeeds[] = {
     [OPTIONS_TEXT_SPEED_SLOW] = 1,
     [OPTIONS_TEXT_SPEED_MID] = 2,
     [OPTIONS_TEXT_SPEED_FAST] = 4,
+    [OPTIONS_TEXT_SPEED_INSTANT] = 8,
 };
 
 static const struct GlyphWidthFunc sGlyphWidthFuncs[] =
@@ -326,19 +327,27 @@ void RunTextPrinters(void)
         {
             if (sTextPrinters[i].active)
             {
-                u16 renderCmd = RenderFont(&sTextPrinters[i]);
-                switch (renderCmd)
+                u16 renderCmd;
+                // Gunk's: on INSTANT, a printer at the fastest speed keeps printing until it waits for a button,
+                // scrolls or ends, so a whole message appears in one frame
+                bool32 instant = GetPlayerTextSpeed() == OPTIONS_TEXT_SPEED_INSTANT
+                              && sTextPrinters[i].textSpeed == 0;
+                do
                 {
-                case RENDER_PRINT:
-                    CopyWindowToVram(sTextPrinters[i].printerTemplate.windowId, COPYWIN_GFX);
-                case RENDER_UPDATE:
-                    if (sTextPrinters[i].callback != NULL)
-                        sTextPrinters[i].callback(&sTextPrinters[i].printerTemplate, renderCmd);
-                    break;
-                case RENDER_FINISH:
-                    sTextPrinters[i].active = FALSE;
-                    break;
-                }
+                    renderCmd = RenderFont(&sTextPrinters[i]);
+                    switch (renderCmd)
+                    {
+                    case RENDER_PRINT:
+                        CopyWindowToVram(sTextPrinters[i].printerTemplate.windowId, COPYWIN_GFX);
+                    case RENDER_UPDATE:
+                        if (sTextPrinters[i].callback != NULL)
+                            sTextPrinters[i].callback(&sTextPrinters[i].printerTemplate, renderCmd);
+                        break;
+                    case RENDER_FINISH:
+                        sTextPrinters[i].active = FALSE;
+                        break;
+                    }
+                } while (instant && renderCmd == RENDER_PRINT);
             }
         }
     }

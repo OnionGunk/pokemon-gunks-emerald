@@ -25,6 +25,7 @@
 #include "m4a.h"
 #include "mail.h"
 #include "event_data.h"
+#include "item_use.h"
 #include "pokemon_storage_system.h"
 #include "task.h"
 #include "naming_screen.h"
@@ -3308,6 +3309,14 @@ static void Cmd_jumpiftype(void)
         gBattlescriptCurrInstr += 7;
 }
 
+// Gunk's: EXP. ALL share for Pokemon that didn't battle (half of what a battler gets before boosts)
+EWRAM_DATA static u16 sGunkExpAllExp = 0;
+
+static bool32 GunkGetsExpAll(u8 monId)
+{
+    return GunkSettingOn(GUNK_SETTING_EXP_ALL) && !GetMonData(&gPlayerParty[monId], MON_DATA_IS_EGG);
+}
+
 static void Cmd_getexp(void)
 {
     u16 item;
@@ -3364,6 +3373,9 @@ static void Cmd_getexp(void)
             }
 
             calculatedExp = gSpeciesInfo[gBattleMons[gBattlerFainted].species].expYield * gBattleMons[gBattlerFainted].level / 7;
+            sGunkExpAllExp = SAFE_DIV(calculatedExp, viaSentIn) / 2;
+            if (sGunkExpAllExp == 0)
+                sGunkExpAllExp = 1;
 
             if (viaExpShare) // at least one mon is getting exp via exp share
             {
@@ -3398,7 +3410,8 @@ static void Cmd_getexp(void)
             else
                 holdEffect = GetItemHoldEffect(item);
 
-            if (holdEffect != HOLD_EFFECT_EXP_SHARE && !(gBattleStruct->sentInPokes & 1))
+            if (holdEffect != HOLD_EFFECT_EXP_SHARE && !(gBattleStruct->sentInPokes & 1)
+             && !GunkGetsExpAll(gBattleStruct->expGetterMonId))
             {
                 *(&gBattleStruct->sentInPokes) >>= 1;
                 gBattleScripting.getexpState = 5;
@@ -3429,6 +3442,8 @@ static void Cmd_getexp(void)
 
                     if (holdEffect == HOLD_EFFECT_EXP_SHARE)
                         gBattleMoveDamage += gExpShareExp;
+                    else if (!(gBattleStruct->sentInPokes & 1) && GunkGetsExpAll(gBattleStruct->expGetterMonId))
+                        gBattleMoveDamage = sGunkExpAllExp;
                     if (holdEffect == HOLD_EFFECT_LUCKY_EGG)
                         gBattleMoveDamage = (gBattleMoveDamage * 150) / 100;
                     if (gBattleTypeFlags & BATTLE_TYPE_TRAINER)

@@ -655,7 +655,8 @@ static void PlayerNotOnBikeMoving(u8 direction, u16 heldKeys)
         return;
     }
 
-    if (!(gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_UNDERWATER) && (heldKeys & B_BUTTON) && FlagGet(FLAG_SYS_B_DASH)
+    // Gunk's: with the Running Shoes the player runs by default and holding B walks (retail: hold B to run)
+    if (!(gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_UNDERWATER) && !(heldKeys & B_BUTTON) && FlagGet(FLAG_SYS_B_DASH)
      && IsRunningDisallowed(gObjectEvents[gPlayerAvatar.objectEventId].currentMetatileBehavior) == 0)
     {
         PlayerRun(direction);
@@ -1304,7 +1305,7 @@ bool8 PartyHasMonWithSurf(void)
         {
             if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE)
                 break;
-            if (MonKnowsMove(&gPlayerParty[i], MOVE_SURF))
+            if (GunkMonCanUseFieldMove(&gPlayerParty[i], MOVE_SURF)) // Gunk's (retail: MonKnowsMove)
                 return TRUE;
         }
     }

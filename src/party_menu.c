@@ -2625,6 +2625,14 @@ static void SetPartyMonFieldSelectionActions(struct Pokemon *mons, u8 slotId)
         }
     }
 
+    // Gunk's: field moves from TMs and HMs in the bag, while the menu has room (8 rows: SUMMARY, 4 moves,
+    // SWITCH, ITEM, CANCEL)
+    for (j = 0; sFieldMoves[j] != FIELD_MOVES_COUNT && sPartyMenuInternal->numActions < 1 + MAX_MON_MOVES; j++)
+    {
+        if (!MonKnowsMove(&mons[slotId], sFieldMoves[j]) && GunkMonCanUseFieldMove(&mons[slotId], sFieldMoves[j]))
+            AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, j + MENU_FIELD_MOVES);
+    }
+
     if (!InBattlePike())
     {
         if (GetMonData(&mons[1], MON_DATA_SPECIES) != SPECIES_NONE)
@@ -4721,6 +4729,23 @@ bool8 MonKnowsMove(struct Pokemon *mon, u16 move)
     return FALSE;
 }
 
+// Gunk's: a Pokemon can use a field move it doesn't know if the bag has the TM or HM for it and it could learn it
+bool8 GunkMonCanUseFieldMove(struct Pokemon *mon, u16 move)
+{
+    u16 item;
+
+    if (GetMonData(mon, MON_DATA_IS_EGG))
+        return FALSE;
+    if (MonKnowsMove(mon, move))
+        return TRUE;
+    for (item = ITEM_TM01; item <= ITEM_HM08; item++)
+    {
+        if (ItemIdToBattleMoveId(item) == move)
+            return CheckBagHasItem(item, 1) && CanMonLearnTMHM(mon, item - ITEM_TM01);
+    }
+    return FALSE;
+}
+
 static void DisplayLearnMoveMessage(const u8 *str)
 {
     StringExpandPlaceholders(gStringVar4, str);
@@ -4781,7 +4806,8 @@ static void Task_LearnedMove(u8 taskId)
     if (move[1] == 0)
     {
         AdjustFriendship(mon, FRIENDSHIP_EVENT_LEARN_TMHM);
-        if (item < ITEM_HM01)
+        // Gunk's: TMs are reusable like HMs (retail removed one TM here)
+        if (item < ITEM_TM01)
             RemoveBagItem(item, 1);
     }
     GetMonNickname(mon, gStringVar1);
@@ -5239,7 +5265,25 @@ void ItemUseCB_EvolutionStone(u8 taskId, TaskFunc task)
 {
     PlaySE(SE_SELECT);
     gCB2_AfterEvolution = gPartyMenu.exitCallback;
-    if (ExecuteTableBasedItemEffect_(gPartyMenu.slotId, gSpecialVar_ItemId, 0))
+    if (!ITEM_HAS_EFFECT(gSpecialVar_ItemId))
+    {
+        // Gunk's: trade evolution items (Metal Coat, King's Rock, ...) have no item effect table entry; evolve here
+        struct Pokemon *mon = &gPlayerParty[gPartyMenu.slotId];
+        u16 targetSpecies = GetEvolutionTargetSpecies(mon, EVO_MODE_ITEM_USE, gSpecialVar_ItemId);
+
+        if (targetSpecies != SPECIES_NONE)
+        {
+            BeginEvolutionScene(mon, targetSpecies, FALSE, gPartyMenu.slotId); // same order as the stone path
+            RemoveBagItem(gSpecialVar_ItemId, 1);
+            FreePartyPointers();
+            return;
+        }
+        gPartyMenuUseExitCallback = FALSE;
+        DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
+        ScheduleBgCopyTilemapToVram(2);
+        gTasks[taskId].func = task;
+    }
+    else if (ExecuteTableBasedItemEffect_(gPartyMenu.slotId, gSpecialVar_ItemId, 0))
     {
         gPartyMenuUseExitCallback = FALSE;
         DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);

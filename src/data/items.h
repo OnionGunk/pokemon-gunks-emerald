@@ -679,26 +679,29 @@ const struct Item gItems[] =
         .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
     },
 
-    [ITEM_034] =
+    // Gunk's: key items, USE turns them on and off (retail: unused ITEM_034 and ITEM_035)
+    [ITEM_ENDLESS_REPEL] =
     {
-        .name = _("????????"),
-        .itemId = ITEM_NONE,
+        .name = _("ENDLESS REPEL"),
+        .itemId = ITEM_ENDLESS_REPEL,
         .price = 0,
-        .description = sDummyDesc,
-        .pocket = POCKET_ITEMS,
+        .description = sGunkEndlessRepelDesc,
+        .importance = 1,
+        .pocket = POCKET_KEY_ITEMS,
         .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .fieldUseFunc = ItemUseOutOfBattle_GunkToggle,
     },
 
-    [ITEM_035] =
+    [ITEM_EXP_ALL] =
     {
-        .name = _("????????"),
-        .itemId = ITEM_NONE,
+        .name = _("EXP. ALL"),
+        .itemId = ITEM_EXP_ALL,
         .price = 0,
-        .description = sDummyDesc,
-        .pocket = POCKET_ITEMS,
+        .description = sGunkExpAllDesc,
+        .importance = 1,
+        .pocket = POCKET_KEY_ITEMS,
         .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .fieldUseFunc = ItemUseOutOfBattle_GunkToggle,
     },
 
     [ITEM_036] =
@@ -2290,8 +2293,8 @@ const struct Item gItems[] =
         .holdEffectParam = 10,
         .description = sKingsRockDesc,
         .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .type = ITEM_USE_PARTY_MENU, // Gunk\'s: usable like an evolution stone
+        .fieldUseFunc = ItemUseOutOfBattle_EvolutionStone,
     },
 
     [ITEM_SILVER_POWDER] =
@@ -2352,8 +2355,8 @@ const struct Item gItems[] =
         .holdEffect = HOLD_EFFECT_DEEP_SEA_TOOTH,
         .description = sDeepSeaToothDesc,
         .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .type = ITEM_USE_PARTY_MENU, // Gunk\'s: usable like an evolution stone
+        .fieldUseFunc = ItemUseOutOfBattle_EvolutionStone,
     },
 
     [ITEM_DEEP_SEA_SCALE] =
@@ -2364,8 +2367,8 @@ const struct Item gItems[] =
         .holdEffect = HOLD_EFFECT_DEEP_SEA_SCALE,
         .description = sDeepSeaScaleDesc,
         .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .type = ITEM_USE_PARTY_MENU, // Gunk\'s: usable like an evolution stone
+        .fieldUseFunc = ItemUseOutOfBattle_EvolutionStone,
     },
 
     [ITEM_SMOKE_BALL] =
@@ -2438,8 +2441,8 @@ const struct Item gItems[] =
         .holdEffectParam = 10,
         .description = sMetalCoatDesc,
         .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .type = ITEM_USE_PARTY_MENU, // Gunk\'s: usable like an evolution stone
+        .fieldUseFunc = ItemUseOutOfBattle_EvolutionStone,
     },
 
     [ITEM_LEFTOVERS] =
@@ -2464,8 +2467,8 @@ const struct Item gItems[] =
         .holdEffectParam = 10,
         .description = sDragonScaleDesc,
         .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .type = ITEM_USE_PARTY_MENU, // Gunk\'s: usable like an evolution stone
+        .fieldUseFunc = ItemUseOutOfBattle_EvolutionStone,
     },
 
     [ITEM_LIGHT_BALL] =
@@ -2683,8 +2686,8 @@ const struct Item gItems[] =
         .holdEffect = HOLD_EFFECT_UP_GRADE,
         .description = sUpGradeDesc,
         .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .type = ITEM_USE_PARTY_MENU, // Gunk\'s: usable like an evolution stone
+        .fieldUseFunc = ItemUseOutOfBattle_EvolutionStone,
     },
 
     [ITEM_SHELL_BELL] =

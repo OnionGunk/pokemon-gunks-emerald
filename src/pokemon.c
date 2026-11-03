@@ -5649,6 +5649,11 @@ u16 GetEvolutionTargetSpecies(struct Pokemon *mon, u8 mode, u16 evolutionItem)
                 if (gEvolutionTable[species][i].param <= beauty)
                     targetSpecies = gEvolutionTable[species][i].targetSpecies;
                 break;
+            // Gunk's: trade evolutions without trading
+            case EVO_TRADE:
+                if (GUNK_TRADE_EVO_LEVEL <= level)
+                    targetSpecies = gEvolutionTable[species][i].targetSpecies;
+                break;
             }
         }
         break;
@@ -5675,7 +5680,8 @@ u16 GetEvolutionTargetSpecies(struct Pokemon *mon, u8 mode, u16 evolutionItem)
     case EVO_MODE_ITEM_CHECK:
         for (i = 0; i < EVOS_PER_MON; i++)
         {
-            if (gEvolutionTable[species][i].method == EVO_ITEM
+            // Gunk's: a trade evolution's item works like an evolution stone
+            if ((gEvolutionTable[species][i].method == EVO_ITEM || gEvolutionTable[species][i].method == EVO_TRADE_ITEM)
              && gEvolutionTable[species][i].param == evolutionItem)
             {
                 targetSpecies = gEvolutionTable[species][i].targetSpecies;
