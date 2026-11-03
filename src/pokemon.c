@@ -6752,8 +6752,9 @@ static s32 GetWildMonTableIdInAlteringCave(u16 species)
 
 void SetWildMonHeldItem(void)
 {
+    // DexNav Pokemon get the DexNav's item roll, except in Altering Cave with its own item list (Gunk's)
     if (!(gBattleTypeFlags & (BATTLE_TYPE_LEGENDARY | BATTLE_TYPE_TRAINER | BATTLE_TYPE_PYRAMID | BATTLE_TYPE_PIKE))
-      && !gDexnavBattle)
+      && (!gDexnavBattle || gMapHeader.mapLayoutId == LAYOUT_ALTERING_CAVE))
     {
         u16 rnd = Random() % 100;
         u16 species = GetMonData(&gEnemyParty[0], MON_DATA_SPECIES, 0);

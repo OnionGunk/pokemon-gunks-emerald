@@ -48,6 +48,7 @@
 #include "text.h"
 #include "text_window.h"
 #include "wild_encounter.h"
+#include "constants/layouts.h"
 #include "window.h"
 #include "constants/map_types.h"
 #include "constants/species.h"
@@ -1391,6 +1392,10 @@ static u16 DexNavGenerateHeldItem(u16 species, u8 searchLevel)
     u8 searchLevelInfluence = searchLevel >> 1;
     u16 item1 = gSpeciesInfo[species].itemCommon;
     u16 item2 = gSpeciesInfo[species].itemRare;
+
+    // Gunk's: Altering Cave has its own wild item list; the battle rolls it the vanilla way (SetWildMonHeldItem)
+    if (gMapHeader.mapLayoutId == LAYOUT_ALTERING_CAVE)
+        return ITEM_NONE;
     
     // if both are the same, 100% to hold
     if (item1 == item2)

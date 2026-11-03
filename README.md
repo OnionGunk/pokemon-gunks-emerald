@@ -15,6 +15,8 @@ It keeps the game's difficulty and story as they are and takes the grind and fri
 - **16 PC boxes** (14 in the original game).
 - **Faster play:** instant text (INST. after FAST in Options), a faster EXP bar, auto-run (hold B to walk),
   eggs hatch in half the steps. New games start on FAST text.
+- **Quick Run and Quick Ball:** in battle, **R** runs; in wild battles **L** throws your ball (hold L and
+  press Left/Right to pick another one).
 - **Items:** reusable TMs, a second registered item on **L**, **Start** sorts the bag, a prompt to use
   another Repel when one runs out, and two key items Mom gives you with the Running Shoes: the
   **Endless Repel** and the **Exp. All** (USE turns them on and off).
