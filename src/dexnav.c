@@ -2772,14 +2772,17 @@ void IncrementDexNavChain(void)
         gSaveBlock1Ptr->dexNavChain++;
 }
 
-// Gunk's: after any battle. A won or caught DexNav battle adds one to the chain; any other wild battle keeps the
-// chain if it was the registered species and resets it if not. Trainer battles leave it alone.
+// Gunk's: after any battle. A won or caught DexNav battle adds one to the chain and any other end (fleeing, the
+// Pokemon fleeing, losing) resets it; any other wild battle keeps the chain if it was the registered species and
+// resets it if not. Trainer battles leave it alone.
 void GunkDexNavUpdateChainAfterBattle(void)
 {
     if (gDexnavBattle)
     {
         if (gBattleOutcome == B_OUTCOME_WON || gBattleOutcome == B_OUTCOME_CAUGHT)
             IncrementDexNavChain();
+        else
+            gSaveBlock1Ptr->dexNavChain = 0;
         return;
     }
     if (gBattleTypeFlags & (BATTLE_TYPE_TRAINER | BATTLE_TYPE_LINK | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_SAFARI))
