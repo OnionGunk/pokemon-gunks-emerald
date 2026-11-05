@@ -7,6 +7,7 @@ save suite passed on that build.
 | # | Change | Emerald today | Verdict | Status |
 |---|--------|---------------|---------|--------|
 | 1 | Title `GUNK EM` (ROM header) | `POKEMON EMER` | Port (game code stays BPEE so emulators keep the flash + RTC settings) | **Done** (header checked in every build) |
+| 1b | Title screen logo | POKeMON / EMERALD VERSION | The user's logo (POKeMON / GUNK'S EMERALD VERSION), fitted with `tools/title_art_fit.py` and imported with `tools/title_art.py` | **Done** (seen in the emulator after the banner fade; new game from the title and save suite 4/4 on build 7a868749) |
 | 2 | Save-safety suite | — | `emerald-tools/emu/suite/suite.py`: 10 save cycles + reload, 75 power cuts during a save, 30 torn-save images, damage in each of the 15 sectors and the signature | **Done**: 4/4 on retail (control) and on every Gunk build |
 | 3 | Instant text | Options: SLOW / MID / FAST, default MID | INST. after FAST in Options (Right on FAST); new games start on FAST. A message prints whole in one frame | **Done** (option cycle and a 3-frame message checked) |
 | 4 | Faster EXP bar | 1 px per frame | 2 px per frame (`battle_interface.c`) | Done in code; not timed in the emulator |
