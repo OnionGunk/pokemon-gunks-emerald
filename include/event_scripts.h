@@ -655,6 +655,10 @@ extern const u8 EventScript_NotFoundNearby[];
 extern const u8 EventScript_PokemonGotAway[];
 extern const u8 EventScript_LostSignal[];
 extern const u8 EventScript_TooDark[];
+extern const u8 EventScript_DexNavNothingChosen[];
+extern const u8 EventScript_DexNavNotFoundHere[];
+extern const u8 EventScript_DexNavSearchWhileSurfing[];
+extern const u8 EventScript_DexNavSearchInGrass[];
 extern const u8 EventScript_MovedTooFast[];
 
 

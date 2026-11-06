@@ -74,7 +74,7 @@
 #define ROW_LAND_TOP_ICON_Y     72
 #define ROW_LAND_BOT_ICON_Y     (ROW_LAND_TOP_ICON_Y + 28)
 
-#define ROW_HIDDEN_ICON_X       52
+#define ROW_HIDDEN_ICON_X       28  // Gunk's: the HIDDEN box sits 3 tiles further left (was 52)
 #define ROW_HIDDEN_ICON_Y       138
 
 #define ENCOUNTER_TYPE_LAND     0
@@ -95,11 +95,6 @@
 #define SCANSIZE_X              12
 #define SCANSIZE_Y              12
 
-#define SPECIES_INFO_Y          5
-#define TYPE_ICONS_Y            (SPECIES_INFO_Y + 24)
-#define SEARCH_LEVEL_Y          (TYPE_ICONS_Y + 24)
-#define HA_INFO_Y               (SEARCH_LEVEL_Y + 24)
-#define CHAIN_BONUS_Y           (HA_INFO_Y + 24)
 
 #define MON_LEVEL_NONEXISTENT   255 //if mon not in area GetEncounterLevel returns this to exit the search
 
@@ -124,6 +119,8 @@
 //funcs
 void EndDexNavSearch(u8 taskId);
 void Task_OpenDexNavFromStartMenu(u8 taskId);
+void CB2_OpenDexNavFromBag(void);
+void Task_OpenDexNavFromField(u8 taskId);
 bool8 TryStartDexnavSearch(void);
 void TryIncrementSpeciesSearchLevel(u16 dexNum);
 void GunkDexNavUpdateChainAfterBattle(void);

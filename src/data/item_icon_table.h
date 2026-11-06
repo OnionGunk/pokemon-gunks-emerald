@@ -58,7 +58,7 @@ const u32 *const gItemIconTable[ITEMS_COUNT + 1][2] =
     // ????????
     [ITEM_ENDLESS_REPEL] = {gItemIcon_Repel, gItemIconPalette_MaxRepel},
     [ITEM_EXP_ALL] = {gItemIcon_ExpShare, gItemIconPalette_ExpShare},
-    [ITEM_036] = {gItemIcon_QuestionMark, gItemIconPalette_QuestionMark},
+    [ITEM_DEXNAV] = {gItemIcon_DevonScope, gItemIconPalette_DevonScope},
     [ITEM_037] = {gItemIcon_QuestionMark, gItemIconPalette_QuestionMark},
     [ITEM_038] = {gItemIcon_QuestionMark, gItemIconPalette_QuestionMark},
     [ITEM_039] = {gItemIcon_QuestionMark, gItemIconPalette_QuestionMark},

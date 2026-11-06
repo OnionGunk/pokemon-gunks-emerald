@@ -8,6 +8,7 @@
 #include "daycare.h"
 #include "decompress.h"
 #include "dexnav.h"
+#include "item_menu.h"
 #include "event_data.h"
 #include "event_object_movement.h"
 #include "event_scripts.h"
@@ -67,6 +68,7 @@ enum WindowIds
 {
     WINDOW_INFO,
     WINDOW_REGISTERED,
+    WINDOW_HINTS,
     WINDOW_COUNT,
 };
 
@@ -144,6 +146,7 @@ static bool8 TryStartHiddenMonFieldEffect(u8 environment, u8 xSize, u8 ySize, bo
 static void DexNavGenerateMoveset(u16 species, u8 searchLevel, u8 encounterLevel, u16* moveDst);
 static u16 DexNavGenerateHeldItem(u16 species, u8 searchLevel);
 static void GunkDexNavRollMon(u16 species, u8 environment, u8 potential);
+static u32 GunkCountPerfectIvs(const struct GunkWildRoll *roll, u32 *total);
 static u8 DexNavGeneratePotential(u8 searchLevel);
 static u8 DexNavTryGenerateMonLevel(u16 species, u8 environment);
 static u8 GetEncounterLevelFromMapData(u16 species, u8 environment);
@@ -182,13 +185,33 @@ static const u32 sHiddenMonIconGfx[] = INCBIN_U32("graphics/dexnav/hidden.4bpp.l
 // strings
 static const u8 sText_DexNav_NoInfo[] = _("--------");
 static const u8 sText_DexNav_CaptureToSee[] = _("Capture first!");
-static const u8 sText_DexNav_PressRToRegister[] = _("R TO REGISTER!");
-static const u8 sText_DexNav_SearchForRegisteredSpecies[] = _("Search {STR_VAR_1}");
+static const u8 sText_DexNav_PressRToRegister[] = _("{R_BUTTON} Nothing registered");
+static const u8 sText_DexNav_SearchForRegisteredSpecies[] = _("{R_BUTTON} {STR_VAR_1}");
+static const u8 sText_DexNav_Caught[] = _("CAUGHT {STR_VAR_1}/{STR_VAR_2}");
+static const u8 sText_DexNav_Unknown[] = _("?????");
+static const u8 sText_DexNav_StatusCaught[] = _("Caught");
+static const u8 sText_DexNav_StatusSeen[] = _("Seen");
+static const u8 sText_DexNav_StatusNotSeen[] = _("Not seen yet");
+static const u8 sText_DexNav_Found[] = _("Found");
+static const u8 sText_DexNav_FoundGrass[] = _("Grass");
+static const u8 sText_DexNav_FoundCave[] = _("Cave");
+static const u8 sText_DexNav_FoundSurfing[] = _("Surfing");
+static const u8 sText_DexNav_FoundHidden[] = _("Hidden");
+static const u8 sText_DexNav_Level[] = _("Level");
+static const u8 sText_DexNav_LevelRange[] = _("{LV}. {STR_VAR_1}-{STR_VAR_2}");
+static const u8 sText_DexNav_LevelOne[] = _("{LV}. {STR_VAR_1}");
+static const u8 sText_DexNav_SearchLv[] = _("Search {LV}. {STR_VAR_1}");
+static const u8 sText_DexNav_ChainLabel[] = _("Chain");
+static const u8 sText_DexNav_HintA[] = _("{A_BUTTON} Search now");
+static const u8 sText_DexNav_HintR[] = _("{R_BUTTON} Register");
+static const u8 sText_DexNav_HintB[] = _("{B_BUTTON} Close");
 static const u8 sText_DexNav_NotFoundHere[] = _("This Pokémon cannot be found here!");
 static const u8 sText_ThreeQmarks[] = _("???");
 static const u8 sText_SearchLevel[] = _("SEARCH {LV}. {STR_VAR_1}");
 static const u8 sText_MonLevel[] = _("{LV}. {STR_VAR_1}");
-static const u8 sText_EggMove[] = _("MOVE: {STR_VAR_1}");
+static const u8 sText_EggMove[] = _("{STR_VAR_1}");  // Gunk's: no "MOVE:", to leave room for the shiny mark
+static const u8 sText_DexNav_Shiny[] = _("SHINY");
+static const u8 sText_DexNav_BarSearchLevel[] = _("Search {STR_VAR_1}");
 static const u8 sText_HeldItem[] = _("{STR_VAR_1}");
 static const u8 sText_StartExit[] = _("{START_BUTTON} EXIT");
 static const u8 sText_DexNavChain[] = _("{NO} {STR_VAR_1}");
@@ -201,25 +224,37 @@ static const u8 sText_ArrowDown[] = _("{DOWN_ARROW}");
 
 static const struct WindowTemplate sDexNavGuiWindowTemplates[] =
 {
+    // Gunk's: the screen follows Gunk's Platinum's DexNav: a title bar with the area and its caught count, one info
+    // panel for the highlighted species and the buttons under the grids (see GunkDexNavRelayout)
     [WINDOW_INFO] =
     {
         .bg = 0,
-        .tilemapLeft = 21,
-        .tilemapTop = 5,
-        .width = 9,
-        .height = 15,
+        .tilemapLeft = 20,
+        .tilemapTop = 2,
+        .width = 10,
+        .height = 17,
         .paletteNum = 15,
         .baseBlock = 1,
     },
     [WINDOW_REGISTERED] =
     {
         .bg = 0,
-        .tilemapLeft = 4,
+        .tilemapLeft = 0,
         .tilemapTop = 0,
-        .width = 26,
+        .width = 30,
         .height = 2,
         .paletteNum = 15,
         .baseBlock = 200,
+    },
+    [WINDOW_HINTS] =
+    {
+        .bg = 0,
+        .tilemapLeft = 12,
+        .tilemapTop = 15,
+        .width = 8,
+        .height = 4,
+        .paletteNum = 15,
+        .baseBlock = 260,
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -488,6 +523,12 @@ static void AddSearchWindow(u8 width)
 #define WINDOW_MOVE_NAME_X  (WINDOW_COL_1 + (GetFontAttribute(sDexNavSearchDataPtr->windowId, FONTATTR_MAX_LETTER_WIDTH) * 6))
 #define SEARCH_ARROW_X      (WINDOW_MOVE_NAME_X + 90)
 #define SEARCH_ARROW_Y      0
+// Gunk's: the search bar's second row holds nature, ability and search level, the first one a shiny mark
+#define SEARCH_BAR_LEVEL_X          WINDOW_COL_1
+#define SEARCH_BAR_MOVE_X           124
+#define SEARCH_BAR_SHINY_X          182
+#define SEARCH_BAR_ABILITY_X        72
+#define SEARCH_BAR_SEARCH_LEVEL_X   136
 static void AddSearchWindowText(u16 species, u8 proximity, u8 searchLevel, bool8 hidden)
 {
     u8 windowId = sDexNavSearchDataPtr->windowId;
@@ -508,8 +549,20 @@ static void AddSearchWindowText(u16 species, u8 proximity, u8 searchLevel, bool8
     //level - always present
     ConvertIntToDecimalStringN(gStringVar1, sDexNavSearchDataPtr->monLevel, STR_CONV_MODE_LEFT_ALIGN, 3);
     StringExpandPlaceholders(gStringVar4, sText_MonLevel);
-    AddTextPrinterParameterized3(sDexNavSearchDataPtr->windowId, 0, WINDOW_COL_1, 0, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
-    
+    AddTextPrinterParameterized3(sDexNavSearchDataPtr->windowId, 0, SEARCH_BAR_LEVEL_X, 0, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
+
+    // Gunk's: like Gunk's Platinum's search bar, always show a shiny mark, the nature, the ability and the search
+    // level (the rolled Pokemon is already made, so this is what the battle gives)
+    if (IsMonShiny(&sDexNavSearchDataPtr->mon))
+        AddTextPrinterParameterized3(windowId, 0, SEARCH_BAR_SHINY_X, 0, sSearchFontColor, TEXT_SKIP_DRAW, sText_DexNav_Shiny);
+    AddTextPrinterParameterized3(windowId, 0, WINDOW_COL_0, 12, sSearchFontColor, TEXT_SKIP_DRAW,
+                                 gNatureNamePointers[GetNature(&sDexNavSearchDataPtr->mon)]);
+    AddTextPrinterParameterized3(windowId, 0, SEARCH_BAR_ABILITY_X, 12, sSearchFontColor, TEXT_SKIP_DRAW,
+                                 gAbilityNames[GetAbilityBySpecies(species, sDexNavSearchDataPtr->abilityNum)]);
+    ConvertIntToDecimalStringN(gStringVar1, searchLevel, STR_CONV_MODE_LEFT_ALIGN, 4);
+    StringExpandPlaceholders(gStringVar4, sText_DexNav_BarSearchLevel);
+    AddTextPrinterParameterized3(windowId, 0, SEARCH_BAR_SEARCH_LEVEL_X, 12, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
+
     if (proximity <= SNEAKING_PROXIMITY)
     {
         PlaySE(SE_POKENAV_ON);
@@ -518,25 +571,11 @@ static void AddSearchWindowText(u16 species, u8 proximity, u8 searchLevel, bool8
         {
             StringCopy(gStringVar1, gMoveNames[sDexNavSearchDataPtr->moves[0]]);
             StringExpandPlaceholders(gStringVar4, sText_EggMove);
-            AddTextPrinterParameterized3(windowId, 0, WINDOW_MOVE_NAME_X, 0, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
+            AddTextPrinterParameterized3(windowId, 0, SEARCH_BAR_MOVE_X, 0, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
         }
-        
-        if (searchLevel > 2)
-        {            
-            // ability name
-            StringCopy(gStringVar1, gAbilityNames[GetAbilityBySpecies(species, sDexNavSearchDataPtr->abilityNum)]);
-            AddTextPrinterParameterized3(windowId, 0, WINDOW_COL_1 + 16, 12, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar1);
-        
-            // item name
-            if (sDexNavSearchDataPtr->heldItem)
-            {
-                CopyItemName(sDexNavSearchDataPtr->heldItem, gStringVar1);
-                StringExpandPlaceholders(gStringVar4, sText_HeldItem);
-                AddTextPrinterParameterized3(windowId, 0, WINDOW_COL_0, 12, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
-            }
-        }
+        // the held item shows as its icon (DexNavUpdateSearchWindow)
     }
-    
+
     //chain level - always present
     ConvertIntToDecimalStringN(gStringVar1, gSaveBlock1Ptr->dexNavChain, STR_CONV_MODE_LEFT_ALIGN, 3);
     if (gSaveBlock1Ptr->dexNavChain > 99)
@@ -913,9 +952,15 @@ static void Task_InitDexNavSearch(u8 taskId)
     
     if (sDexNavSearchDataPtr->monLevel == MON_LEVEL_NONEXISTENT || !TryStartHiddenMonFieldEffect(sDexNavSearchDataPtr->environment, 12, 12, FALSE))
     {
+        // Gunk's: not in this area at all, or no grass or water close enough
+        bool8 notHere = (sDexNavSearchDataPtr->monLevel == MON_LEVEL_NONEXISTENT);
+
         Free(sDexNavSearchDataPtr);
         FreeMonIconPalettes();
-        ScriptContext_SetupScript(EventScript_NotFoundNearby);
+        if (notHere)
+            ScriptContext_SetupScript(EventScript_DexNavNotFoundHere);
+        else
+            ScriptContext_SetupScript(EventScript_NotFoundNearby);
         DestroyTask(taskId);
         return;
     }
@@ -989,6 +1034,7 @@ static void DexNavDrawIcons(void)
 {
     u8 searchLevel = sDexNavSearchDataPtr->searchLevel;
     u16 species = sDexNavSearchDataPtr->species;
+    u32 total;
     
     // init sprite ids
     /*sDexNavSearchDataPtr->iconSpriteId = 0xFF;
@@ -999,7 +1045,8 @@ static void DexNavDrawIcons(void)
     DrawSearchWindow(species, sDexNavSearchDataPtr->potential, FALSE);
     DrawDexNavSearchMonIcon(species, &sDexNavSearchDataPtr->iconSpriteId, GetSetPokedexFlag(SpeciesToNationalPokedexNum(species), FLAG_GET_CAUGHT));
     DrawDexNavSearchHeldItem(&sDexNavSearchDataPtr->itemSpriteId);
-    DexNavDrawPotentialStars(sDexNavSearchDataPtr->potential, &sDexNavSearchDataPtr->starSpriteIds[0]);
+    // Gunk's: one star per perfect IV of the Pokemon this search gives (up to 3), like Gunk's Platinum's
+    DexNavDrawPotentialStars(min(GunkCountPerfectIvs(&sDexNavSearchDataPtr->peeked, &total), 3), &sDexNavSearchDataPtr->starSpriteIds[0]);
     DexNavUpdateDirectionArrow();
     //DexNavDrawSight(sDexNavSearchDataPtr->proximity, &sDexNavSearchDataPtr->eyeSpriteId);
 }
@@ -1012,8 +1059,27 @@ bool8 TryStartDexnavSearch(void)
     u8 taskId;
     u16 val = VarGet(VAR_DEXNAV_SPECIES);
     
-    if (FlagGet(FLAG_SYS_DEXNAV_SEARCH) || (val & MASK_SPECIES) == SPECIES_NONE)
+    if (FlagGet(FLAG_SYS_DEXNAV_SEARCH))
         return FALSE;
+
+    // Gunk's: say why R can't search, instead of nothing or "couldn't be found nearby"
+    if ((val & MASK_SPECIES) == SPECIES_NONE)
+    {
+        if (!FlagGet(FLAG_SYS_DEXNAV_GET))
+            return FALSE;
+        ScriptContext_SetupScript(EventScript_DexNavNothingChosen);
+        return TRUE;
+    }
+    if ((val >> 14) == ENCOUNTER_TYPE_WATER && !TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_SURFING))
+    {
+        ScriptContext_SetupScript(EventScript_DexNavSearchWhileSurfing);
+        return TRUE;
+    }
+    if ((val >> 14) == ENCOUNTER_TYPE_LAND && TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_SURFING))
+    {
+        ScriptContext_SetupScript(EventScript_DexNavSearchInGrass);
+        return TRUE;
+    }
     
     HideMapNamePopUpWindow();
     ChangeBgY_ScreenOff(0, 0, 0);
@@ -1241,18 +1307,15 @@ static void DexNavUpdateSearchWindow(u8 proximity, u8 searchLevel)
                 gSprites[sDexNavSearchDataPtr->itemSpriteId].invisible = FALSE;
         }
         
-        if (searchLevel > 4)
-        {
-            if (sDexNavSearchDataPtr->starSpriteIds[0] != MAX_SPRITES)
-                gSprites[sDexNavSearchDataPtr->starSpriteIds[0]].invisible = FALSE;
-
-            if (sDexNavSearchDataPtr->starSpriteIds[1] != MAX_SPRITES)
-                gSprites[sDexNavSearchDataPtr->starSpriteIds[1]].invisible = FALSE;
-
-            if (sDexNavSearchDataPtr->starSpriteIds[2] != MAX_SPRITES)
-                gSprites[sDexNavSearchDataPtr->starSpriteIds[2]].invisible = FALSE;
-        }
     }
+
+    // Gunk's: the perfect-IV stars always show
+    if (sDexNavSearchDataPtr->starSpriteIds[0] != MAX_SPRITES)
+        gSprites[sDexNavSearchDataPtr->starSpriteIds[0]].invisible = FALSE;
+    if (sDexNavSearchDataPtr->starSpriteIds[1] != MAX_SPRITES)
+        gSprites[sDexNavSearchDataPtr->starSpriteIds[1]].invisible = FALSE;
+    if (sDexNavSearchDataPtr->starSpriteIds[2] != MAX_SPRITES)
+        gSprites[sDexNavSearchDataPtr->starSpriteIds[2]].invisible = FALSE;
 }
 
 //////////////////////////////
@@ -1450,6 +1513,12 @@ static u16 DexNavGenerateHeldItem(u16 species, u8 searchLevel)
     u8 searchLevelInfluence = searchLevel >> 1;
     u16 item1 = gSpeciesInfo[species].itemCommon;
     u16 item2 = gSpeciesInfo[species].itemRare;
+    // Gunk's: a Compound Eyes lead makes items more likely, as it does for other wild Pokemon (55% -> 80% to hold
+    // one, 5% -> 20% for the rare one)
+    bool8 compoundEyes = !GetMonData(&gPlayerParty[0], MON_DATA_SANITY_IS_EGG)
+                      && GetMonAbility(&gPlayerParty[0]) == ABILITY_COMPOUND_EYES;
+    u8 holdBonus = compoundEyes ? 25 : 0;
+    u8 rareBonus = compoundEyes ? 15 : 0;
 
     // Gunk's: Altering Cave has its own wild item list; the battle rolls it the vanilla way (SetWildMonHeldItem)
     if (gMapHeader.mapLayoutId == LAYOUT_ALTERING_CAVE)
@@ -1465,11 +1534,11 @@ static u16 DexNavGenerateHeldItem(u16 species, u8 searchLevel)
 
     // if only one entry, 50% chance
     if (item2 == ITEM_NONE && item1 != ITEM_NONE)
-        return (randVal < 50) ? item1 : ITEM_NONE;
+        return (randVal < 50 + holdBonus) ? item1 : ITEM_NONE;
 
     // if both are distinct item1 = 50% + srclvl/2; item2 = 5% + srchlvl/2
-    if (randVal < (50 + searchLevelInfluence + 5 + searchLevel))
-        return (randVal > 5 + searchLevelInfluence) ? item1 : item2;
+    if (randVal < (50 + searchLevelInfluence + 5 + searchLevel + holdBonus))
+        return (randVal > 5 + searchLevelInfluence + rareBonus) ? item1 : item2;
     else
         return ITEM_NONE;
 
@@ -1692,6 +1761,48 @@ static bool8 DexNav_InitBgs(void)
     return TRUE;
 }
 
+// Gunk's: rearrange the screen's tilemap (gui_tilemap.bin) to Gunk's Platinum's layout. The R tab leaves the title
+// bar, the SEARCH button and the five labelled bars become one info panel with a blank red bar on top, and the
+// HIDDEN box moves left to make room for the button hints.
+#define GUI_TILE(r, c) (((u16 *)sBg1TilemapBuffer)[(r) * 32 + (c)])
+static void GunkDexNavRelayout(void)
+{
+    u16 hidden[5][11];
+    u32 r, c;
+
+    // title bar: black where the R tab was, and the WATER box's top edge gets its left corner back
+    GUI_TILE(0, 1) = GUI_TILE(0, 2) = GUI_TILE(0, 3) = 0;
+    GUI_TILE(1, 1) = 0x00B | 0x400; // the top right corner, flipped
+    for (c = 2; c <= 4; c++)
+        GUI_TILE(1, c) = 0x00A;
+
+    // info panel: cols 20-29, a red bar on rows 2-3 and white down to the bottom edge on row 19
+    for (c = 20; c <= 28; c++)
+        GUI_TILE(1, c) = 0x005;
+    for (c = 20; c <= 29; c++)
+    {
+        GUI_TILE(2, c) = (c == 29) ? 0x034 : 0x033;
+        GUI_TILE(3, c) = (c == 29) ? 0x03B : 0x03A;
+        for (r = 4; r <= 18; r++)
+            GUI_TILE(r, c) = (c == 20 || c == 29) ? 0x043 : 0x02C;
+    }
+
+    // HIDDEN box: cols 4-14 -> 1-11, with its join on the LAND box's bottom edge
+    for (r = 0; r < 5; r++)
+        for (c = 0; c < 11; c++)
+            hidden[r][c] = GUI_TILE(15 + r, 4 + c);
+    for (c = 1; c <= 18; c++)
+        GUI_TILE(14, c) = (c == 1) ? 0x077 : (c == 11) ? 0x079 : (c < 11) ? 0x078 : 0x076;
+    for (r = 0; r < 5; r++)
+    {
+        for (c = 0; c < 20; c++)
+            GUI_TILE(15 + r, c) = (r == 4) ? 0x0A1 : 0x00F;
+        for (c = 0; c < 11; c++)
+            GUI_TILE(15 + r, 1 + c) = hidden[r][c];
+    }
+}
+#undef GUI_TILE
+
 static bool8 DexNav_LoadGraphics(void)
 {
     switch (sDexNavUiDataPtr->state)
@@ -1705,6 +1816,7 @@ static bool8 DexNav_LoadGraphics(void)
         if (FreeTempTileDataBuffersIfPossible() != TRUE)
         {
             LZDecompressWram(sDexNavGuiTilemap, sBg1TilemapBuffer);
+            GunkDexNavRelayout();
             sDexNavUiDataPtr->state++;
         }
         break;
@@ -1878,7 +1990,6 @@ static void DexNavLoadCapturedAllSymbols(void)
 {
     u16 headerId = GetCurrentMapWildMonHeaderId();
     
-    LoadCompressedSpriteSheetUsingHeap(&sCapturedAllPokemonSpriteSheet);
 
     if (CapturedAllLandMons(headerId))
         CreateSprite(&sCaptureAllMonsSpriteTemplate, 152, 58, 0);
@@ -1887,7 +1998,7 @@ static void DexNavLoadCapturedAllSymbols(void)
         CreateSprite(&sCaptureAllMonsSpriteTemplate, 139, 17, 0);
     
     if (CapturedAllHiddenMons(headerId))
-        CreateSprite(&sCaptureAllMonsSpriteTemplate, 114, 123, 0);
+        CreateSprite(&sCaptureAllMonsSpriteTemplate, 90, 123, 0); // Gunk's: the HIDDEN box moved left (was 114)
 }
 
 //#define WIN_DETAILS_TILE        0x3a3
@@ -1900,8 +2011,8 @@ static void DexNav_InitWindows(void)
 
 static void DexNavGuiFreeResources(void)
 {
-    Free(sDexNavUiDataPtr);
-    Free(sBg1TilemapBuffer);
+    FREE_AND_SET_NULL(sDexNavUiDataPtr); // Gunk's: NULL once closed (tests read it to tell the screen is open)
+    FREE_AND_SET_NULL(sBg1TilemapBuffer);
     FreeAllWindowBuffers();
 }
 
@@ -2036,14 +2147,38 @@ static void DexNavLoadEncounterData(void)
     }
 }
 
+// Gunk's: seen but not caught species show as a dark silhouette, like Gunk's Platinum's DexNav
+#define SILHOUETTE_PAL_TAG 0x4007
+static const u16 sSilhouettePal[16] =
+{
+    RGB(0, 0, 0), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9),
+    RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9), RGB(6, 7, 9),
+};
+static const struct SpritePalette sSilhouetteSpritePalette = {sSilhouettePal, SILHOUETTE_PAL_TAG};
+
 static void TryDrawIconInSlot(u16 species, s16 x, s16 y)
 {
+    u8 spriteId;
+
     if (species == SPECIES_NONE || species > NUM_SPECIES)
+    {
         CreateNoDataIcon(x, y);   //'X' in slot
+    }
     else if (!GetSetPokedexFlag(SpeciesToNationalPokedexNum(species), FLAG_GET_SEEN))
-        CreateMonIcon(SPECIES_NONE, SpriteCB_MonIcon, x, y, 0, 0xFFFFFFFF, 0); //question mark
+    {
+        CreateMonIcon(SPECIES_NONE, SpriteCB_MonIcon, x, y, 1, 0xFFFFFFFF, 0); //question mark
+    }
     else
-        CreateMonIcon(species, SpriteCB_MonIcon, x, y, 0, 0xFFFFFFFF, 0);
+    {
+        spriteId = CreateMonIcon(species, SpriteCB_MonIcon, x, y, 1, 0xFFFFFFFF, 0);
+        if (!GetSetPokedexFlag(SpeciesToNationalPokedexNum(species), FLAG_GET_CAUGHT))
+            gSprites[spriteId].oam.paletteNum = LoadSpritePalette(&sSilhouetteSpritePalette);
+    }
+
+    // Gunk's: a caught species gets a small Poke Ball in its cell's top left corner, in front of its icon
+    if (species != SPECIES_NONE && species <= NUM_SPECIES
+     && GetSetPokedexFlag(SpeciesToNationalPokedexNum(species), FLAG_GET_CAUGHT))
+        CreateSprite(&sCaptureAllMonsSpriteTemplate, x - 8, y - 2, 0);
 }
 
 static void DrawSpeciesIcons(void)
@@ -2053,6 +2188,7 @@ static void DrawSpeciesIcons(void)
     u16 species;
     
     LoadCompressedSpriteSheetUsingHeap(&sNoDataIconSpriteSheet);
+    LoadCompressedSpriteSheetUsingHeap(&sCapturedAllPokemonSpriteSheet); // Gunk's: also the caught marks
     for (i = 0; i < LAND_WILD_COUNT; i++)
     {
         species = sDexNavUiDataPtr->landSpecies[i];
@@ -2083,34 +2219,34 @@ static void DrawSpeciesIcons(void)
     }
 }
 
-static u16 DexNavGetSpecies(void)
+// Gunk's: the species in the highlighted cell, seen or not (SPECIES_NONE for an empty cell, or a HIDDEN cell
+// without the detector)
+static u16 DexNavGetSlotSpecies(void)
 {
-    u16 species;
-    
     switch (sDexNavUiDataPtr->cursorRow)
     {
     case ROW_WATER:
-        species = sDexNavUiDataPtr->waterSpecies[sDexNavUiDataPtr->cursorCol];
-        break;
+        return sDexNavUiDataPtr->waterSpecies[sDexNavUiDataPtr->cursorCol];
     case ROW_LAND_TOP:
-        species = sDexNavUiDataPtr->landSpecies[sDexNavUiDataPtr->cursorCol];
-        break;
+        return sDexNavUiDataPtr->landSpecies[sDexNavUiDataPtr->cursorCol];
     case ROW_LAND_BOT:
-        species = sDexNavUiDataPtr->landSpecies[sDexNavUiDataPtr->cursorCol + COL_LAND_COUNT];
-        break;
+        return sDexNavUiDataPtr->landSpecies[sDexNavUiDataPtr->cursorCol + COL_LAND_COUNT];
     case ROW_HIDDEN:
         if (!FlagGet(FLAG_SYS_DETECTOR_MODE))
-            species = SPECIES_NONE;
-        else
-            species = sDexNavUiDataPtr->hiddenSpecies[sDexNavUiDataPtr->cursorCol];
-        break;
+            return SPECIES_NONE;
+        return sDexNavUiDataPtr->hiddenSpecies[sDexNavUiDataPtr->cursorCol];
     default:
         return SPECIES_NONE;
     }
-    
+}
+
+static u16 DexNavGetSpecies(void)
+{
+    u16 species = DexNavGetSlotSpecies();
+
     if (!GetSetPokedexFlag(SpeciesToNationalPokedexNum(species), FLAG_GET_SEEN))
         return SPECIES_NONE;
-    
+
     return species;
 }
 
@@ -2159,106 +2295,214 @@ static void SetTypeIconPosAndPal(u8 typeId, u8 x, u8 y, u8 spriteArrayId)
     SetSpriteInvisibility(spriteArrayId, FALSE);
 }
 
+// Gunk's: the lowest and highest level a species has in this area's slots of one kind (FALSE if it has none)
+static bool8 DexNavGetLevelRange(u16 species, u8 environment, u8 *minLevel, u8 *maxLevel)
+{
+    u16 headerId = GetCurrentMapWildMonHeaderId();
+    const struct WildPokemonInfo *info;
+    u32 i, count;
+
+    *minLevel = MAX_LEVEL;
+    *maxLevel = 0;
+    if (headerId == 0xFFFF) // HEADER_NONE
+        return FALSE;
+
+    switch (environment)
+    {
+    case ENCOUNTER_TYPE_LAND:
+        info = gWildMonHeaders[headerId].landMonsInfo;
+        count = LAND_WILD_COUNT;
+        break;
+    case ENCOUNTER_TYPE_WATER:
+        info = gWildMonHeaders[headerId].waterMonsInfo;
+        count = WATER_WILD_COUNT;
+        break;
+    default:
+        info = gWildMonHeaders[headerId].hiddenMonsInfo;
+        count = HIDDEN_WILD_COUNT;
+        break;
+    }
+
+    if (info == NULL)
+        return FALSE;
+    for (i = 0; i < count; i++)
+    {
+        if (info->wildPokemon[i].species == species)
+        {
+            *minLevel = min(*minLevel, info->wildPokemon[i].minLevel);
+            *maxLevel = max(*maxLevel, info->wildPokemon[i].maxLevel);
+        }
+    }
+    return *maxLevel != 0;
+}
+
+// Gunk's: the info panel, laid out like Gunk's Platinum's: the name on the red bar, then status, where it's found,
+// its level range here, search level, chain, types and (once caught) abilities
+#define INFO_TEXT_X     4
+#define INFO_VALUE_X    32
+#define INFO_NAME_Y     2
+#define INFO_LINE_Y(n)  (16 + 12 * (n))
+#define INFO_TYPES_Y    (16 + INFO_LINE_Y(5) + 1)  // screen y of the type icons: the window starts on row 2
+#define INFO_ABILITY_Y  (INFO_LINE_Y(5) + 19)
+
+static void PrintInfoLine(u8 line, const u8 *label, const u8 *value)
+{
+    if (label != NULL)
+        AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_LINE_Y(line), sFontColor_Black, 0, label);
+    AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, label != NULL ? INFO_VALUE_X : INFO_TEXT_X, INFO_LINE_Y(line),
+                                 sFontColor_Black, 0, value);
+}
+
 static void PrintCurrentSpeciesInfo(void)
 {
-    u8 searchLevelBonus = 0;
+    u16 slotSpecies = DexNavGetSlotSpecies();
     u16 species = DexNavGetSpecies();
-    u32 i;
     u16 dexNum = SpeciesToNationalPokedexNum(species);
+    u8 environment = sDexNavUiDataPtr->environment;
+    u8 minLevel, maxLevel;
     u8 type1, type2;
-    
-    if (!GetSetPokedexFlag(dexNum, FLAG_GET_SEEN))
-        species = SPECIES_NONE;
+    const u8 *text;
 
-    // clear windows
     FillWindowPixelBuffer(WINDOW_INFO, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
-    
-    //species name
+    SetSpriteInvisibility(0, TRUE);
+    SetSpriteInvisibility(1, TRUE);
+
+    if (slotSpecies == SPECIES_NONE || slotSpecies > NUM_SPECIES)
+    {
+        // an empty cell, or a HIDDEN cell without the detector
+        AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_NAME_Y, sFontColor_White, 0, sText_DexNav_NoInfo);
+        CopyWindowToVram(WINDOW_INFO, 3);
+        PutWindowTilemap(WINDOW_INFO);
+        return;
+    }
+
+    // name and status
+    AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_NAME_Y, sFontColor_White, 0,
+                                 species == SPECIES_NONE ? sText_DexNav_Unknown : gSpeciesNames[species]);
     if (species == SPECIES_NONE)
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, SPECIES_INFO_Y, sFontColor_Black, 0, sText_DexNav_NoInfo);
+        text = sText_DexNav_StatusNotSeen;
+    else if (GetSetPokedexFlag(dexNum, FLAG_GET_CAUGHT))
+        text = sText_DexNav_StatusCaught;
     else
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, SPECIES_INFO_Y, sFontColor_Black, 0, gSpeciesNames[species]);
-    
-    //type icon(s)
+        text = sText_DexNav_StatusSeen;
+    PrintInfoLine(0, NULL, text);
+
+    // where and at what levels
+    if (environment == ENCOUNTER_TYPE_WATER)
+        text = sText_DexNav_FoundSurfing;
+    else if (environment == ENCOUNTER_TYPE_HIDDEN)
+        text = sText_DexNav_FoundHidden;
+    else if (GetCurrentMapType() == MAP_TYPE_UNDERGROUND)
+        text = sText_DexNav_FoundCave;
+    else
+        text = sText_DexNav_FoundGrass;
+    PrintInfoLine(1, sText_DexNav_Found, text);
+
+    if (DexNavGetLevelRange(slotSpecies, environment, &minLevel, &maxLevel))
+    {
+        ConvertIntToDecimalStringN(gStringVar1, minLevel, STR_CONV_MODE_LEFT_ALIGN, 3);
+        ConvertIntToDecimalStringN(gStringVar2, maxLevel, STR_CONV_MODE_LEFT_ALIGN, 3);
+        StringExpandPlaceholders(gStringVar4, minLevel == maxLevel ? sText_DexNav_LevelOne : sText_DexNav_LevelRange);
+        PrintInfoLine(2, sText_DexNav_Level, gStringVar4);
+    }
+
+    // search level and chain
+    ConvertIntToDecimalStringN(gStringVar1, species == SPECIES_NONE ? 0 : GetSearchLevel(dexNum), STR_CONV_MODE_LEFT_ALIGN, 4);
+    StringExpandPlaceholders(gStringVar4, sText_DexNav_SearchLv);
+    PrintInfoLine(3, NULL, gStringVar4);
+    ConvertIntToDecimalStringN(gStringVar4, gSaveBlock1Ptr->dexNavChain, STR_CONV_MODE_LEFT_ALIGN, 3);
+    PrintInfoLine(4, sText_DexNav_ChainLabel, gStringVar4);
+
+    // types (??? until seen)
     type1 = gSpeciesInfo[species].types[0];
     type2 = gSpeciesInfo[species].types[1];
     if (species == SPECIES_NONE)
         type1 = type2 = TYPE_MYSTERY;
-    
-    if (type1 == type2)
-    {
-        SetTypeIconPosAndPal(type1, 186, 69, 0);
-        SetSpriteInvisibility(1, TRUE);
-    }
-    else
-    {
-        SetTypeIconPosAndPal(type1, 168, 69, 0);
-        SetTypeIconPosAndPal(type2, 168 + 33, 69, 1);
-    }
-    
-    //search level
+    SetTypeIconPosAndPal(type1, 164, INFO_TYPES_Y, 0);
+    if (type1 != type2)
+        SetTypeIconPosAndPal(type2, 164 + 36, INFO_TYPES_Y, 1);
+
+    // Gunk's: the species' abilities, once caught (Gen 3 has no hidden abilities)
     if (species == SPECIES_NONE)
     {
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, SEARCH_LEVEL_Y, sFontColor_Black, 0, sText_DexNav_NoInfo);
-    }
-    else
-    {
-        ConvertIntToDecimalStringN(gStringVar4, GetSearchLevel(dexNum), 0, 4);
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, SEARCH_LEVEL_Y, sFontColor_Black, 0, gStringVar4);
-    }
-    
-    // Gunk's: the species' abilities (Gen 3 has no hidden abilities; the label reads ABILITY)
-    if (species == SPECIES_NONE)
-    {
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, sText_DexNav_NoInfo);
+        AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_ABILITY_Y, sFontColor_Black, 0, sText_DexNav_NoInfo);
     }
     else if (GetSetPokedexFlag(dexNum, FLAG_GET_CAUGHT))
     {
-        u8 *end = StringCopy(gStringVar4, gAbilityNames[gSpeciesInfo[species].abilities[0]]);
+        AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_ABILITY_Y, sFontColor_Black, 0,
+                                     gAbilityNames[gSpeciesInfo[species].abilities[0]]);
         if (gSpeciesInfo[species].abilities[1] != ABILITY_NONE)
-        {
-            *end++ = CHAR_SLASH;
-            StringCopy(end, gAbilityNames[gSpeciesInfo[species].abilities[1]]);
-        }
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, gStringVar4);
+            AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_ABILITY_Y + 12, sFontColor_Black, 0,
+                                         gAbilityNames[gSpeciesInfo[species].abilities[1]]);
     }
     else
     {
-        AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, HA_INFO_Y, sFontColor_Black, 0, sText_DexNav_CaptureToSee);
+        AddTextPrinterParameterized3(WINDOW_INFO, FONT_SMALL, INFO_TEXT_X, INFO_ABILITY_Y, sFontColor_Black, 0, sText_DexNav_CaptureToSee);
     }
-    
-    //current chain
-    ConvertIntToDecimalStringN(gStringVar1, gSaveBlock1Ptr->dexNavChain, STR_CONV_MODE_LEFT_ALIGN, 3);
-    AddTextPrinterParameterized3(WINDOW_INFO, 0, 0, CHAIN_BONUS_Y, sFontColor_Black, 0, gStringVar1);
-    
+
     CopyWindowToVram(WINDOW_INFO, 3);
     PutWindowTilemap(WINDOW_INFO);
 }
 
+// Gunk's: the title bar: the area's name, and how many of its species are caught (HIDDEN ones only with the
+// detector, the same as the grid shows them)
 static void PrintMapName(void)
 {
+    u16 counted[LAND_WILD_COUNT + WATER_WILD_COUNT + HIDDEN_WILD_COUNT];
+    u32 i, j, total = 0, caught = 0;
+    u16 species;
+
+    for (i = 0; i < NELEMS(counted); i++)
+    {
+        if (i < LAND_WILD_COUNT)
+            species = sDexNavUiDataPtr->landSpecies[i];
+        else if (i < LAND_WILD_COUNT + WATER_WILD_COUNT)
+            species = sDexNavUiDataPtr->waterSpecies[i - LAND_WILD_COUNT];
+        else if (FlagGet(FLAG_SYS_DETECTOR_MODE))
+            species = sDexNavUiDataPtr->hiddenSpecies[i - LAND_WILD_COUNT - WATER_WILD_COUNT];
+        else
+            species = SPECIES_NONE;
+        if (species == SPECIES_NONE || species > NUM_SPECIES)
+            continue;
+        for (j = 0; j < total && counted[j] != species; j++)
+            ;
+        if (j < total)
+            continue;
+        counted[total++] = species;
+        if (GetSetPokedexFlag(SpeciesToNationalPokedexNum(species), FLAG_GET_CAUGHT))
+            caught++;
+    }
+
+    FillWindowPixelBuffer(WINDOW_REGISTERED, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
     GetMapName(gStringVar3, GetCurrentRegionMapSectionId(), 0);
-    AddTextPrinterParameterized3(WINDOW_REGISTERED, 1, 108 +
-      GetStringRightAlignXOffset(1, gStringVar3, MAP_NAME_LENGTH * GetFontAttribute(1, FONTATTR_MAX_LETTER_WIDTH)), 0, sFontColor_White, 0, gStringVar3);
+    AddTextPrinterParameterized3(WINDOW_REGISTERED, FONT_NORMAL, 4, 0, sFontColor_White, 0, gStringVar3);
+    ConvertIntToDecimalStringN(gStringVar1, caught, STR_CONV_MODE_LEFT_ALIGN, 2);
+    ConvertIntToDecimalStringN(gStringVar2, total, STR_CONV_MODE_LEFT_ALIGN, 2);
+    StringExpandPlaceholders(gStringVar4, sText_DexNav_Caught);
+    AddTextPrinterParameterized3(WINDOW_REGISTERED, FONT_NORMAL, 236 - GetStringWidth(FONT_NORMAL, gStringVar4, 0), 0,
+                                 sFontColor_White, 0, gStringVar4);
+    PutWindowTilemap(WINDOW_REGISTERED);
     CopyWindowToVram(WINDOW_REGISTERED, 3);
 }
 
+// Gunk's: the search panel under the grids: what R searches for in the field, and the buttons
 static void PrintSearchableSpecies(u16 species)
 {
-    FillWindowPixelBuffer(WINDOW_REGISTERED, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
-    PutWindowTilemap(WINDOW_REGISTERED);
+    FillWindowPixelBuffer(WINDOW_HINTS, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
     if (species == SPECIES_NONE)
     {
-        AddTextPrinterParameterized3(WINDOW_REGISTERED, 1, 0, 0, sFontColor_White, TEXT_SKIP_DRAW, sText_DexNav_PressRToRegister);
+        AddTextPrinterParameterized3(WINDOW_HINTS, FONT_SMALL, 0, 0, sFontColor_White, TEXT_SKIP_DRAW, sText_DexNav_HintR);
     }
     else
     {
         StringCopy(gStringVar1, gSpeciesNames[species]);
         StringExpandPlaceholders(gStringVar4, sText_DexNav_SearchForRegisteredSpecies);
-        AddTextPrinterParameterized3(WINDOW_REGISTERED, 1, 0, 0, sFontColor_White, TEXT_SKIP_DRAW, gStringVar4);
+        AddTextPrinterParameterized3(WINDOW_HINTS, FONT_SMALL, 0, 0, sFontColor_White, TEXT_SKIP_DRAW, gStringVar4);
     }
-    
-    PrintMapName();
+    AddTextPrinterParameterized3(WINDOW_HINTS, FONT_SMALL, 0, 10, sFontColor_White, TEXT_SKIP_DRAW, sText_DexNav_HintA);
+    AddTextPrinterParameterized3(WINDOW_HINTS, FONT_SMALL, 0, 20, sFontColor_White, TEXT_SKIP_DRAW, sText_DexNav_HintB);
+    PutWindowTilemap(WINDOW_HINTS);
+    CopyWindowToVram(WINDOW_HINTS, 3);
 }
 
 static void CreateTypeIconSprites(void)
@@ -2325,8 +2569,9 @@ static bool8 DexNav_DoGfxSetup(void)
         gMain.state++;
         break;
     case 7:
-        PrintSearchableSpecies(VarGet(VAR_DEXNAV_SPECIES) & MASK_SPECIES);
         DexNavLoadEncounterData();
+        PrintMapName();
+        PrintSearchableSpecies(VarGet(VAR_DEXNAV_SPECIES) & MASK_SPECIES);
         gMain.state++;
         break;
     case 8:
@@ -2381,6 +2626,23 @@ static void DexNavGuiInit(MainCallback callback)
     sDexNavUiDataPtr->state = 0;
     sDexNavUiDataPtr->savedCallback = callback;
     SetMainCallback2(DexNav_RunSetup);
+}
+
+// Gunk's: from the DEXNAV key item in the bag
+void CB2_OpenDexNavFromBag(void)
+{
+    DexNavGuiInit(CB2_ReturnToBagMenuPocket);
+}
+
+// Gunk's: from the DEXNAV key item registered to SELECT; B goes straight back to the field
+void Task_OpenDexNavFromField(u8 taskId)
+{
+    if (!gPaletteFade.active)
+    {
+        CleanupOverworldWindowsAndTilemaps();
+        DexNavGuiInit(CB2_ReturnToField);
+        DestroyTask(taskId);
+    }
 }
 
 void Task_OpenDexNavFromStartMenu(u8 taskId)

@@ -704,15 +704,19 @@ const struct Item gItems[] =
         .fieldUseFunc = ItemUseOutOfBattle_GunkToggle,
     },
 
-    [ITEM_036] =
+    // Gunk's: the DexNav as a key item, like Gunk's Platinum's: USE opens it, and it can be registered
+    // (retail: unused ITEM_036)
+    [ITEM_DEXNAV] =
     {
-        .name = _("????????"),
-        .itemId = ITEM_NONE,
+        .name = _("DEXNAV"),
+        .itemId = ITEM_DEXNAV,
         .price = 0,
-        .description = sDummyDesc,
-        .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .description = sGunkDexNavDesc,
+        .importance = 1,
+        .registrability = TRUE,
+        .pocket = POCKET_KEY_ITEMS,
+        .type = ITEM_USE_PBLOCK_CASE,
+        .fieldUseFunc = ItemUseOutOfBattle_DexNav,
     },
 
     [ITEM_037] =

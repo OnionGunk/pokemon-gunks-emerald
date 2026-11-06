@@ -19,6 +19,7 @@ void ItemUseOutOfBattle_TMHM(u8 taskId);
 void ItemUseOutOfBattle_Repel(u8 taskId);
 void GunkRestartRepel(void);
 void ItemUseOutOfBattle_GunkToggle(u8 taskId);
+void ItemUseOutOfBattle_DexNav(u8 taskId);
 bool32 GunkSettingOn(u16 setting);
 void ItemUseOutOfBattle_EscapeRope(u8 taskId);
 void ItemUseOutOfBattle_BlackWhiteFlute(u8 taskId);

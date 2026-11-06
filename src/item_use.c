@@ -19,6 +19,7 @@
 #include "field_weather.h"
 #include "item.h"
 #include "item_menu.h"
+#include "dexnav.h"
 #include "item_use.h"
 #include "mail.h"
 #include "main.h"
@@ -633,6 +634,23 @@ void ItemUseOutOfBattle_PokeblockCase(u8 taskId)
         gFieldCallback = FieldCB_ReturnToFieldNoScript;
         FadeScreen(FADE_TO_BLACK, 0);
         gTasks[taskId].func = Task_OpenRegisteredPokeblockCase;
+    }
+}
+
+// Gunk's: the DEXNAV key item opens the DexNav screen from the bag (B goes back to the bag) or, registered, from
+// the field
+void ItemUseOutOfBattle_DexNav(u8 taskId)
+{
+    if (gTasks[taskId].tUsingRegisteredKeyItem != TRUE)
+    {
+        gBagMenu->newScreenCallback = CB2_OpenDexNavFromBag;
+        Task_FadeAndCloseBagMenu(taskId);
+    }
+    else
+    {
+        gFieldCallback = FieldCB_ReturnToFieldNoScript;
+        FadeScreen(FADE_TO_BLACK, 0);
+        gTasks[taskId].func = Task_OpenDexNavFromField;
     }
 }
 

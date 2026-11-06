@@ -984,6 +984,11 @@ static const u8 sGunkEndlessRepelDesc[] = _(
     "POKéMON away while\n"
     "it's on. USE: on/off.");
 
+static const u8 sGunkDexNavDesc[] = _(
+    "Shows the POKéMON\n"
+    "found here. Pick one\n"
+    "and search with R.");
+
 static const u8 sGunkExpAllDesc[] = _(
     "While it's on, POKé-\n"
     "MON that didn't fight\n"
