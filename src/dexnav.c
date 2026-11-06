@@ -38,6 +38,7 @@
 #include "pokemon_summary_screen.h"
 #include "random.h"
 #include "region_map.h"
+#include "safari_zone.h"
 #include "scanline_effect.h"
 #include "script.h"
 #include "script_pokemon_util.h"
@@ -953,6 +954,16 @@ static void Task_InitDexNavSearch(u8 taskId)
     sDexNavSearchDataPtr->isHiddenMon = (environment == ENCOUNTER_TYPE_HIDDEN) ? TRUE : FALSE;
     sDexNavSearchDataPtr->monLevel = DexNavTryGenerateMonLevel(species, environment);
     
+    // Gunk's: a DexNav battle is a plain wild battle (any ball): never in the Safari Zone, its Pokémon take Safari Balls
+    if (GetSafariZoneFlag())
+    {
+        sDexNavSearchDataPtr = NULL;
+        FreeMonIconPalettes();
+        ScriptContext_SetupScript(EventScript_DexNavSafari);
+        DestroyTask(taskId);
+        return;
+    }
+
     if (GetFlashLevel() > 0)
     {
         sDexNavSearchDataPtr = NULL;
@@ -2973,7 +2984,7 @@ bool8 TryFindHiddenPokemon(void)
     u32 attempts = 0;
     u16 currSteps;
 
-    if (!FlagGet(FLAG_SYS_DETECTOR_MODE) || FlagGet(FLAG_SYS_DEXNAV_SEARCH) || GetFlashLevel() > 0)
+    if (!FlagGet(FLAG_SYS_DETECTOR_MODE) || FlagGet(FLAG_SYS_DEXNAV_SEARCH) || GetFlashLevel() > 0 || GetSafariZoneFlag())
     {
         (*stepPtr) = 0;
         return FALSE;

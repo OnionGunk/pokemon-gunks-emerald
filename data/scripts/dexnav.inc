@@ -73,3 +73,11 @@ EventScript_TooDark::
     end
 sText_TooDark:
     .string "It's too dark to search\nfor a Pokémon!$"
+
+@ Gunk's: a DexNav battle is a plain wild battle, so it can't happen in the Safari Zone (Safari Balls only)
+EventScript_DexNavSafari::
+    msgbox sText_DexNavSafari, MSGBOX_SIGN
+    end
+sText_DexNavSafari:
+    .string "The DEXNAV can't search in the\n"
+    .string "SAFARI ZONE.$"
