@@ -8,9 +8,17 @@ It keeps the game's difficulty and story as they are and takes the grind and fri
 
 ## Features
 
-- **DexNav.** Comes with the Pokédex. It shows which Pokémon live on the route; pick one, press **R** in the
-  grass and sneak up on it. Every DexNav Pokémon is an ordinary, legal wild roll: search levels, chains and
-  stars give extra rolls for good IVs and shinies instead of editing the Pokémon.
+- **DexNav.** A key item Birch gives you with the Pokédex (open it from the Bag, the START menu or SELECT
+  once registered).
+  - The screen shows the area's Pokémon and how many you've caught. Caught ones are in colour with a Poké
+    Ball mark, seen ones a silhouette, unseen ones "?". The info panel shows status, where it's found, the
+    area's level range, search level, chain, types and abilities.
+  - Pick one with **R**, then press **R** in the grass or while surfing and sneak up on it.
+  - The search bar shows its level, nature, ability, a SHINY mark and one star per perfect IV.
+  - Every DexNav Pokémon is an ordinary, legal wild roll: search levels, chains and stars give extra rolls for
+    good IVs and shinies instead of editing the Pokémon.
+  - The chain grows when you catch or defeat the Pokémon, and resets when you run, take too long or meet
+    another species.
 - **Pokémon follow you**, with emotes and messages, for all 386 species.
 - **16 PC boxes** (14 in the original game).
 - **Faster play:** instant text (INST. after FAST in Options), a faster EXP bar, auto-run (hold B to walk),

@@ -54,6 +54,7 @@ BerryTree_EventScript_CheckBerryStage1::
 	message BerryTree_Text_BerryGrowthStage1
 	waitmessage
 	waitbuttonpress
+	call BerryTree_EventScript_GunkHoursLeft
 	goto BerryTree_EventScript_WantToWater
 
 BerryTree_EventScript_CheckBerryStage2::
@@ -62,6 +63,7 @@ BerryTree_EventScript_CheckBerryStage2::
 	message BerryTree_Text_BerryGrowthStage2
 	waitmessage
 	waitbuttonpress
+	call BerryTree_EventScript_GunkHoursLeft
 	goto BerryTree_EventScript_WantToWater
 
 BerryTree_EventScript_CheckBerryStage3::
@@ -70,6 +72,7 @@ BerryTree_EventScript_CheckBerryStage3::
 	message BerryTree_Text_BerryGrowthStage3
 	waitmessage
 	waitbuttonpress
+	call BerryTree_EventScript_GunkHoursLeft
 	goto BerryTree_EventScript_WantToWater
 
 BerryTree_EventScript_CheckBerryStage4::
@@ -79,7 +82,23 @@ BerryTree_EventScript_CheckBerryStage4::
 	message BerryTree_Text_BerryGrowthStage4
 	waitmessage
 	waitbuttonpress
+	call BerryTree_EventScript_GunkHoursLeft
 	goto BerryTree_EventScript_WantToWater
+
+@ Gunk's: how long until the tree bears fruit, like Gunk's Platinum's honey trees
+BerryTree_EventScript_GunkHoursLeft::
+	special GunkBufferBerryTreeHoursLeft
+	goto_if_eq VAR_RESULT, 1, BerryTree_EventScript_GunkOneHourLeft
+	message BerryTree_Text_GunkHoursLeft
+	waitmessage
+	waitbuttonpress
+	return
+
+BerryTree_EventScript_GunkOneHourLeft::
+	message BerryTree_Text_GunkOneHourLeft
+	waitmessage
+	waitbuttonpress
+	return
 
 @ VAR_0x8005 here is the number of times watered
 @ Buffered by ObjectEventInteractionGetBerryTreeData
@@ -205,6 +224,13 @@ BerryTree_Text_BerryGrowthStage3:
 BerryTree_Text_BerryGrowthStage4:
 	.string "These {STR_VAR_1} flowers are blooming\n"
 	.string "{STR_VAR_2}.$"
+
+BerryTree_Text_GunkHoursLeft:
+	.string "It should bear fruit in about\n"
+	.string "{STR_VAR_3} hours.$"
+
+BerryTree_Text_GunkOneHourLeft:
+	.string "It should bear fruit within the hour.$"
 
 BerryTree_Text_CareAdverbGreat:
 	.string "very beautifully$"

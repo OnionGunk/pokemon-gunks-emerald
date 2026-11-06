@@ -1281,6 +1281,21 @@ void ObjectEventInteractionGetBerryName(void)
     GetBerryNameByBerryType(berryType, gStringVar1);
 }
 
+// Gunk's: like Gunk's Platinum's honey trees, a growing berry tree says about how many hours are left until it bears
+// fruit: STR_VAR_3 and VAR_RESULT (rounded up, at least 1)
+void GunkBufferBerryTreeHoursLeft(void)
+{
+    struct BerryTree *tree = GetBerryTreeInfo(GetObjectEventBerryTreeId(gSelectedObjectEvent));
+    u32 minutes = tree->minutesUntilNextStage;
+    u32 hours;
+
+    if (tree->stage >= BERRY_STAGE_PLANTED && tree->stage < BERRY_STAGE_FLOWERING)
+        minutes += (BERRY_STAGE_FLOWERING - tree->stage) * GetStageDurationByBerryType(tree->berry);
+    hours = max((minutes + 59) / 60, 1);
+    gSpecialVar_Result = hours;
+    ConvertIntToDecimalStringN(gStringVar3, hours, STR_CONV_MODE_LEFT_ALIGN, 3);
+}
+
 void ObjectEventInteractionGetBerryCountString(void)
 {
     u8 treeId = GetObjectEventBerryTreeId(gSelectedObjectEvent);

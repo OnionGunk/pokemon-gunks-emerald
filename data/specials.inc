@@ -536,3 +536,4 @@ gSpecials::
 	def_special CloseDeptStoreElevatorWindow
 	def_special TrySetBattleTowerLinkType
 	def_special GunkRestartRepel
+	def_special GunkBufferBerryTreeHoursLeft
