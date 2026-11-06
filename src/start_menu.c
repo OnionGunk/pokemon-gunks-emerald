@@ -581,6 +581,12 @@ void Task_ShowStartMenu(u8 taskId)
     }
 }
 
+// Gunk's: the START menu is up, opening, or coming back after a menu (the DexNav search pauses meanwhile)
+bool8 IsStartMenuOpen(void)
+{
+    return FuncIsActiveTask(StartMenuTask) || FuncIsActiveTask(Task_ShowStartMenu) || IsFieldWaitingToShowStartMenu();
+}
+
 void ShowStartMenu(void)
 {
     if (!IsOverworldLinkActive())

@@ -125,6 +125,7 @@ bool8 TryStartDexnavSearch(void);
 void TryIncrementSpeciesSearchLevel(u16 dexNum);
 void GunkDexNavUpdateChainAfterBattle(void);
 void ResetDexNavSearch(void);
+void GunkDexNavTryResumeSearch(void);
 bool8 TryFindHiddenPokemon(void);
 void IncrementDexNavChain(void);
 

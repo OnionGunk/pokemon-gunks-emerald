@@ -18,6 +18,7 @@ void FieldCB_WarpExitFadeFromBlack(void);
 void FieldCB_WarpExitFadeFromWhite(void);
 bool8 FieldCB_ReturnToFieldOpenStartMenu(void);
 void ReturnToFieldOpenStartMenu(void);
+bool8 IsFieldWaitingToShowStartMenu(void);
 void FieldCB_ReturnToFieldNoScript(void);
 void FieldCB_ReturnToFieldNoScriptCheckMusic(void);
 void DoWarp(void);

@@ -1465,7 +1465,10 @@ static void DoCB1_Overworld(u16 newKeys, u16 heldKeys)
 void CB1_Overworld(void)
 {
     if (gMain.callback2 == CB2_Overworld)
+    {
+        GunkDexNavTryResumeSearch();
         DoCB1_Overworld(gMain.newKeys, gMain.heldKeys);
+    }
 }
 
 static void OverworldBasic(void)

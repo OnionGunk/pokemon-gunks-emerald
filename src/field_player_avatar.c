@@ -17,6 +17,7 @@
 #include "script.h"
 #include "sound.h"
 #include "sprite.h"
+#include "string_util.h"
 #include "strings.h"
 #include "task.h"
 #include "tv.h"
@@ -2005,12 +2006,32 @@ static bool8 Fishing_StartEncounter(struct Task *task)
     return FALSE;
 }
 
+// Gunk's: on Route 119 the DexNav says how far the nearest Feebas spot is, like Gunk's Platinum's honey tree info
+static const u8 sText_GunkFeebasHere[] = _("Not even a nibble…\nThe DEXNAV senses FEEBAS right here!{PAUSE_UNTIL_PRESS}");
+static const u8 sText_GunkFeebasSteps[] = _("Not even a nibble…\nThe DEXNAV senses FEEBAS {STR_VAR_1} steps away.{PAUSE_UNTIL_PRESS}");
+
+static const u8 *GunkNotEvenANibbleText(void)
+{
+    u16 steps;
+
+    if (!FlagGet(FLAG_SYS_DEXNAV_GET))
+        return gText_NotEvenANibble;
+    steps = GunkFeebasStepsAway();
+    if (steps == GUNK_FEEBAS_NOT_HERE)
+        return gText_NotEvenANibble;
+    if (steps == 0)
+        return sText_GunkFeebasHere;
+    ConvertIntToDecimalStringN(gStringVar1, steps, STR_CONV_MODE_LEFT_ALIGN, 3);
+    StringExpandPlaceholders(gStringVar4, sText_GunkFeebasSteps);
+    return gStringVar4;
+}
+
 static bool8 Fishing_NotEvenNibble(struct Task *task)
 {
     AlignFishingAnimationFrames();
     StartSpriteAnim(&gSprites[gPlayerAvatar.spriteId], GetFishingNoCatchDirectionAnimNum(GetPlayerFacingDirection()));
     FillWindowPixelBuffer(0, PIXEL_FILL(1));
-    AddTextPrinterParameterized2(0, FONT_NORMAL, gText_NotEvenANibble, 1, 0, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
+    AddTextPrinterParameterized2(0, FONT_NORMAL, GunkNotEvenANibbleText(), 1, 0, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
     task->tStep = FISHING_SHOW_RESULT;
     return TRUE;
 }

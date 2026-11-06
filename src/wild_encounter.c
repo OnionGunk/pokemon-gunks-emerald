@@ -180,6 +180,54 @@ static void FeebasSeedRng(u16 seed)
     sFeebasRngValue = seed;
 }
 
+// Gunk's: how many steps the nearest Feebas spot is from the tile in front of the player on Route 119 (0: that
+// tile), or GUNK_FEEBAS_NOT_HERE elsewhere. The spots are CheckFeebas's: the same seed, the same counting
+u16 GunkFeebasStepsAway(void)
+{
+    u16 feebasSpots[NUM_FEEBAS_SPOTS];
+    u16 x, y, spotId, best = GUNK_FEEBAS_NOT_HERE;
+    s16 targetX, targetY;
+    u32 i, section;
+
+    if (gSaveBlock1Ptr->location.mapGroup != MAP_GROUP(MAP_ROUTE119)
+     || gSaveBlock1Ptr->location.mapNum != MAP_NUM(MAP_ROUTE119))
+        return GUNK_FEEBAS_NOT_HERE;
+
+    GetXYCoordsOneStepInFrontOfPlayer(&targetX, &targetY);
+    targetX -= MAP_OFFSET;
+    targetY -= MAP_OFFSET;
+
+    FeebasSeedRng(gSaveBlock1Ptr->dewfordTrends[0].rand);
+    for (i = 0; i != NUM_FEEBAS_SPOTS;)
+    {
+        feebasSpots[i] = FeebasRandom() % NUM_FISHING_SPOTS;
+        if (feebasSpots[i] == 0)
+            feebasSpots[i] = NUM_FISHING_SPOTS;
+        if (feebasSpots[i] >= 4)
+            i++;
+    }
+
+    for (section = 0; section < 3; section++)
+    {
+        spotId = sRoute119WaterTileData[section * 3 + 2];
+        for (y = sRoute119WaterTileData[section * 3 + 0]; y <= sRoute119WaterTileData[section * 3 + 1]; y++)
+        {
+            for (x = 0; x < gMapHeader.mapLayout->width; x++)
+            {
+                if (!MetatileBehavior_IsSurfableAndNotWaterfall(MapGridGetMetatileBehaviorAt(x + MAP_OFFSET, y + MAP_OFFSET)))
+                    continue;
+                spotId++;
+                for (i = 0; i < NUM_FEEBAS_SPOTS; i++)
+                {
+                    if (spotId == feebasSpots[i])
+                        best = min(best, (u16)(abs(x - targetX) + abs(y - targetY)));
+                }
+            }
+        }
+    }
+    return best;
+}
+
 // LAND_WILD_COUNT
 u8 ChooseWildMonIndex_Land(void)
 {

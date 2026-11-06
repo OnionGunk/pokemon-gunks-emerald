@@ -6,6 +6,7 @@ extern bool8 (*gMenuCallback)(void);
 void ShowReturnToFieldStartMenu(void);
 void Task_ShowStartMenu(u8 taskId);
 void ShowStartMenu(void);
+bool8 IsStartMenuOpen(void);
 void ShowBattlePyramidStartMenu(void);
 void SaveGame(void);
 void CB2_SetUpSaveAfterLinkBattle(void);

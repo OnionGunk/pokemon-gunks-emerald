@@ -107,7 +107,11 @@ struct DexNavSearch
     u8 exclamationSpriteId;
     u8 hiddenSearch:1;
     u8 isHiddenMon:1;
-    u8 unk:6;
+    u8 revealed:1; // Gunk's: the task's tRevealed, kept while a menu has the task stopped
+    u8 gfxHidden:1; // Gunk's: the window and sprites are hidden under the START menu
+    u8 unk:4;
+    u16 frameCount; // Gunk's: the task's tFrameCount, kept while a menu has the task stopped
+    u8 shownSprites; // Gunk's: which search sprites were visible before the START menu hid them
     u16 palBuffer[16];
     struct Pokemon mon; // Gunk's: the Pokemon rolled when the search starts
     struct GunkWildRoll peeked; // Gunk's: what the peek saw of it (tests check the replay made the same Pokemon)
@@ -127,6 +131,7 @@ struct DexNavGUI
     u8 potential;
     u8 typeIconSpriteIds[2];
     u8 starSpriteIds[3];
+    u16 titleTimer; // Gunk's: during a swarm the title bar takes turns showing it
 };
 
 // RAM
@@ -135,6 +140,9 @@ EWRAM_DATA static struct DexNavSearch *sDexNavSearchDataPtr = NULL;
 EWRAM_DATA static struct DexNavGUI *sDexNavUiDataPtr = NULL;
 EWRAM_DATA static u8 *sBg1TilemapBuffer = NULL;
 EWRAM_DATA bool8 gDexnavBattle = FALSE;
+// Gunk's: the search lives here, not on the heap: the field resets the heap when it comes back from a menu,
+// and a search paused by the START menu has to survive the Bag
+EWRAM_DATA static struct DexNavSearch sDexNavSearchData = {0};
 
 //// Function Declarations
 //GUI
@@ -162,6 +170,7 @@ static void EndDexNavSearchSetupScript(const u8 *script, u8 taskId);
 // HIDDEN MONS
 static void DexNavDrawHiddenIcons(void);
 static void DrawHiddenSearchWindow(u8 width);
+static void DrawHiddenSearchText(void);
 
 //// Const Data
 // gui image data
@@ -188,6 +197,8 @@ static const u8 sText_DexNav_CaptureToSee[] = _("Capture first!");
 static const u8 sText_DexNav_PressRToRegister[] = _("{R_BUTTON} Nothing registered");
 static const u8 sText_DexNav_SearchForRegisteredSpecies[] = _("{R_BUTTON} {STR_VAR_1}");
 static const u8 sText_DexNav_Caught[] = _("CAUGHT {STR_VAR_1}/{STR_VAR_2}");
+static const u8 sText_DexNav_Swarm[] = _("SWARM: {STR_VAR_1} on {STR_VAR_2}");
+#define GUNK_SWARM_TITLE_FRAMES 180
 static const u8 sText_DexNav_Unknown[] = _("?????");
 static const u8 sText_DexNav_StatusCaught[] = _("Caught");
 static const u8 sText_DexNav_StatusSeen[] = _("Seen");
@@ -933,7 +944,8 @@ static void Task_InitDexNavSearch(u8 taskId)
     u16 species = task->tSpecies;
     u8 environment = task->tEnvironment;
     
-    sDexNavSearchDataPtr = AllocZeroed(sizeof(struct DexNavSearch));
+    sDexNavSearchDataPtr = &sDexNavSearchData;
+    memset(sDexNavSearchDataPtr, 0, sizeof(*sDexNavSearchDataPtr));
     
     // assign non-objects to struct
     sDexNavSearchDataPtr->species = species;
@@ -943,7 +955,7 @@ static void Task_InitDexNavSearch(u8 taskId)
     
     if (GetFlashLevel() > 0)
     {
-        Free(sDexNavSearchDataPtr);
+        sDexNavSearchDataPtr = NULL;
         FreeMonIconPalettes();
         ScriptContext_SetupScript(EventScript_TooDark);
         DestroyTask(taskId);
@@ -955,7 +967,7 @@ static void Task_InitDexNavSearch(u8 taskId)
         // Gunk's: not in this area at all, or no grass or water close enough
         bool8 notHere = (sDexNavSearchDataPtr->monLevel == MON_LEVEL_NONEXISTENT);
 
-        Free(sDexNavSearchDataPtr);
+        sDexNavSearchDataPtr = NULL;
         FreeMonIconPalettes();
         if (notHere)
             ScriptContext_SetupScript(EventScript_DexNavNotFoundHere);
@@ -1093,10 +1105,18 @@ bool8 TryStartDexnavSearch(void)
 void EndDexNavSearch(u8 taskId)
 {
     FlagClear(FLAG_SYS_DEXNAV_SEARCH);
-    DestroyTask(taskId);
-    RemoveDexNavWindowAndGfx();
-    GunkStopPatchEffect();
-    Free(sDexNavSearchDataPtr);
+    // Gunk's: no task means a full-screen menu reset the tasks and sprites (or the game was loaded mid-search),
+    // so there's no window or sprite of the search left to remove
+    if (taskId != TASK_NONE)
+        DestroyTask(taskId);
+    if (sDexNavSearchDataPtr == NULL)
+        return;
+    if (taskId != TASK_NONE)
+    {
+        RemoveDexNavWindowAndGfx();
+        GunkStopPatchEffect();
+    }
+    sDexNavSearchDataPtr = NULL;
 }
 
 static void EndDexNavSearchSetupScript(const u8 *script, u8 taskId)
@@ -1116,9 +1136,8 @@ static u8 GetMovementProximityBySearchLevel(void)
         return 4;
 }
 
-static void Task_RevealHiddenMon(u8 taskId)
+static void DexNavDrawRevealedMon(void)
 {
-    struct Task *task = &gTasks[taskId];
     u16 species = sDexNavSearchDataPtr->species;
     
     // remove owned icon if it exists
@@ -1156,8 +1175,118 @@ static void Task_RevealHiddenMon(u8 taskId)
     }
     
     DexNavUpdateDirectionArrow();
+}
+
+static void Task_RevealHiddenMon(u8 taskId)
+{
+    struct Task *task = &gTasks[taskId];
+
+    DexNavDrawRevealedMon();
     task->func = Task_DexNavSearch;
     task->tFrameCount = 0;  //restart search clock
+}
+
+// Gunk's: hide the search window and sprites under the START menu, and bring them back after
+static void GunkDexNavShowSearch(bool8 show)
+{
+    u8 ids[8];
+    u32 i;
+
+    if (sDexNavSearchDataPtr->gfxHidden == !show)
+        return;
+
+    if (show)
+    {
+        // the START menu loads its own frame over this one's tiles, and hiding cleared the text: draw both again
+        LoadDexNavWindowGfx(sDexNavSearchDataPtr->windowId, 0x1d5, 14 * 16);
+        DrawStdFrameWithCustomTileAndPalette(sDexNavSearchDataPtr->windowId, FALSE, 0x214, 14);
+        if (sDexNavSearchDataPtr->hiddenSearch && !sDexNavSearchDataPtr->revealed)
+            DrawHiddenSearchText();
+        else
+            DexNavUpdateSearchWindow(sDexNavSearchDataPtr->proximity, sDexNavSearchDataPtr->searchLevel);
+        CopyWindowToVram(sDexNavSearchDataPtr->windowId, COPYWIN_FULL);
+    }
+    else
+    {
+        ClearStdWindowAndFrameToTransparent(sDexNavSearchDataPtr->windowId, TRUE);
+    }
+
+    ids[0] = sDexNavSearchDataPtr->iconSpriteId;
+    ids[1] = sDexNavSearchDataPtr->itemSpriteId;
+    ids[2] = sDexNavSearchDataPtr->eyeSpriteId;
+    ids[3] = sDexNavSearchDataPtr->starSpriteIds[0];
+    ids[4] = sDexNavSearchDataPtr->starSpriteIds[1];
+    ids[5] = sDexNavSearchDataPtr->starSpriteIds[2];
+    ids[6] = sDexNavSearchDataPtr->ownedIconSpriteId;
+    ids[7] = sDexNavSearchDataPtr->exclamationSpriteId;
+    if (!show)
+        sDexNavSearchDataPtr->shownSprites = 0;
+    for (i = 0; i < NELEMS(ids); i++)
+    {
+        if (ids[i] == MAX_SPRITES)
+            continue;
+        if (show)
+        {
+            gSprites[ids[i]].invisible = !(sDexNavSearchDataPtr->shownSprites & (1 << i));
+        }
+        else
+        {
+            if (!gSprites[ids[i]].invisible)
+                sDexNavSearchDataPtr->shownSprites |= 1 << i;
+            gSprites[ids[i]].invisible = TRUE;
+        }
+    }
+    sDexNavSearchDataPtr->gfxHidden = !show;
+}
+
+// Gunk's: a full-screen menu from the START menu (Bag, party, Pokédex...) resets the tasks and sprites. When the
+// field comes back with the search still on, draw it again and carry on from the same frame count
+void GunkDexNavTryResumeSearch(void)
+{
+    u8 taskId;
+    u32 i;
+
+    if (!FlagGet(FLAG_SYS_DEXNAV_SEARCH))
+        return;
+    if (sDexNavSearchDataPtr == NULL)
+    { // loaded from a save made mid-search
+        FlagClear(FLAG_SYS_DEXNAV_SEARCH);
+        return;
+    }
+    if (FuncIsActiveTask(Task_DexNavSearch) || FuncIsActiveTask(Task_RevealHiddenMon))
+        return;
+
+    sDexNavSearchDataPtr->iconSpriteId = MAX_SPRITES;
+    sDexNavSearchDataPtr->itemSpriteId = MAX_SPRITES;
+    sDexNavSearchDataPtr->eyeSpriteId = MAX_SPRITES;
+    for (i = 0; i < NELEMS(sDexNavSearchDataPtr->starSpriteIds); i++)
+        sDexNavSearchDataPtr->starSpriteIds[i] = MAX_SPRITES;
+    sDexNavSearchDataPtr->ownedIconSpriteId = MAX_SPRITES;
+    sDexNavSearchDataPtr->exclamationSpriteId = MAX_SPRITES;
+    sDexNavSearchDataPtr->fldEffSpriteId = MAX_SPRITES;
+    sDexNavSearchDataPtr->gfxHidden = FALSE;
+
+    LoadSearchIconData();
+    if (sDexNavSearchDataPtr->hiddenSearch && !sDexNavSearchDataPtr->revealed)
+    {
+        DexNavDrawHiddenIcons();
+    }
+    else if (sDexNavSearchDataPtr->hiddenSearch)
+    {
+        DexNavDrawRevealedMon();
+    }
+    else
+    {
+        DexNavDrawIcons();
+        DexNavUpdateSearchWindow(sDexNavSearchDataPtr->proximity, sDexNavSearchDataPtr->searchLevel);
+    }
+    GunkRestartPatchEffect();
+
+    gPlayerAvatar.creeping = TRUE;
+    taskId = CreateTask(Task_DexNavSearch, 0);
+    gTasks[taskId].tProximity = sDexNavSearchDataPtr->proximity;
+    gTasks[taskId].tFrameCount = sDexNavSearchDataPtr->frameCount;
+    gTasks[taskId].tRevealed = sDexNavSearchDataPtr->revealed;
 }
 
 static void Task_DexNavSearch(u8 taskId)
@@ -1165,6 +1294,17 @@ static void Task_DexNavSearch(u8 taskId)
     u16 species;
     s16 x, y;
     struct Task *task = &gTasks[taskId];
+
+    // Gunk's: the START menu and what it opens (Bag, party...) pause the search, like Gunk's Platinum's menus;
+    // a full-screen menu stops this task, and GunkDexNavTryResumeSearch starts it again from here
+    sDexNavSearchDataPtr->frameCount = task->tFrameCount;
+    sDexNavSearchDataPtr->revealed = task->tRevealed;
+    if (IsStartMenuOpen() || gMain.callback2 != CB2_Overworld)
+    {
+        GunkDexNavShowSearch(FALSE);
+        return;
+    }
+    GunkDexNavShowSearch(TRUE);
     
     if (sDexNavSearchDataPtr->proximity > MAX_PROXIMITY)
     { // out of range
@@ -1218,7 +1358,7 @@ static void Task_DexNavSearch(u8 taskId)
         FlagClear(FLAG_SYS_DEXNAV_SEARCH);
         gDexnavBattle = TRUE;        
         ScriptContext_SetupScript(EventScript_StartDexNavBattle);
-        Free(sDexNavSearchDataPtr);
+        sDexNavSearchDataPtr = NULL;
         DestroyTask(taskId);
         return;
     }
@@ -2038,6 +2178,9 @@ static void Task_DexNavExitAndSearch(u8 taskId)
 {
     DexNavGuiFreeResources();
     DestroyTask(taskId);
+    // Gunk's: a search paused by the START menu gives way to the new one (the screen reset its task)
+    if (FlagGet(FLAG_SYS_DEXNAV_SEARCH))
+        EndDexNavSearch(TASK_NONE);
     SetMainCallback1(CB1_DexNavSearchCallback);
     SetMainCallback2(CB2_ReturnToField);
 }
@@ -2474,6 +2617,18 @@ static void PrintMapName(void)
     }
 
     FillWindowPixelBuffer(WINDOW_REGISTERED, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
+    // Gunk's: a swarm (the TV's mass outbreak) shows here every other 3 s: which Pokémon, and where
+    if (gSaveBlock1Ptr->outbreakPokemonSpecies != SPECIES_NONE && (sDexNavUiDataPtr->titleTimer / GUNK_SWARM_TITLE_FRAMES) % 2)
+    {
+        StringCopy(gStringVar1, gSpeciesNames[gSaveBlock1Ptr->outbreakPokemonSpecies]);
+        GetMapName(gStringVar2, Overworld_GetMapHeaderByGroupAndId(gSaveBlock1Ptr->outbreakLocationMapGroup,
+                                                                   gSaveBlock1Ptr->outbreakLocationMapNum)->regionMapSectionId, 0);
+        StringExpandPlaceholders(gStringVar4, sText_DexNav_Swarm);
+        AddTextPrinterParameterized3(WINDOW_REGISTERED, FONT_NORMAL, 4, 0, sFontColor_White, 0, gStringVar4);
+        PutWindowTilemap(WINDOW_REGISTERED);
+        CopyWindowToVram(WINDOW_REGISTERED, 3);
+        return;
+    }
     GetMapName(gStringVar3, GetCurrentRegionMapSectionId(), 0);
     AddTextPrinterParameterized3(WINDOW_REGISTERED, FONT_NORMAL, 4, 0, sFontColor_White, 0, gStringVar3);
     ConvertIntToDecimalStringN(gStringVar1, caught, STR_CONV_MODE_LEFT_ALIGN, 2);
@@ -2665,6 +2820,10 @@ static void Task_DexNavMain(u8 taskId)
 {
     struct Task *task = &gTasks[taskId];
     u16 species;
+
+    if (gSaveBlock1Ptr->outbreakPokemonSpecies != SPECIES_NONE
+     && ++sDexNavUiDataPtr->titleTimer % GUNK_SWARM_TITLE_FRAMES == 0)
+        PrintMapName();
     
     if (IsSEPlaying())
         return;
@@ -2891,7 +3050,8 @@ bool8 TryFindHiddenPokemon(void)
         if (species == SPECIES_NONE)
             return FALSE;
         
-        sDexNavSearchDataPtr = AllocZeroed(sizeof(struct DexNavSearch));
+        sDexNavSearchDataPtr = &sDexNavSearchData;
+        memset(sDexNavSearchDataPtr, 0, sizeof(*sDexNavSearchDataPtr));
                 
         // init search data
         sDexNavSearchDataPtr->isHiddenMon = isHiddenMon;
@@ -2901,7 +3061,7 @@ bool8 TryFindHiddenPokemon(void)
         sDexNavSearchDataPtr->monLevel = DexNavTryGenerateMonLevel(species, environment);
         if (sDexNavSearchDataPtr->monLevel == MON_LEVEL_NONEXISTENT)
         {
-            Free(sDexNavSearchDataPtr);
+            sDexNavSearchDataPtr = NULL;
             return FALSE;
         }
 
@@ -2948,14 +3108,19 @@ static void DrawSearchIcon(void)
 // the initial hidden icon window ONLY shows search icon, ??? instead of name, and the search level (and pokeball icon if owned)
 //  if the player presses R or moves close enough, the full search window will be created
 //  this way, if the player is not interested in hidden pokemon it will not be too intrusive
-static void DrawHiddenSearchWindow(u8 width)
+static void DrawHiddenSearchText(void)
 {
-    AddSearchWindow(width);
     AddTextPrinterParameterized3(sDexNavSearchDataPtr->windowId, 0, SPECIES_ICON_X + 4, 0, sSearchFontColor, TEXT_SKIP_DRAW, sText_ThreeQmarks);
     
     ConvertIntToDecimalStringN(gStringVar1, sDexNavSearchDataPtr->searchLevel, STR_CONV_MODE_LEFT_ALIGN, 2);
     StringExpandPlaceholders(gStringVar4, sText_SearchLevel);
     AddTextPrinterParameterized3(sDexNavSearchDataPtr->windowId, 0, SPECIES_ICON_X + 4, 12, sSearchFontColor, TEXT_SKIP_DRAW, gStringVar4);
+}
+
+static void DrawHiddenSearchWindow(u8 width)
+{
+    AddSearchWindow(width);
+    DrawHiddenSearchText();
     CopyWindowToVram(sDexNavSearchDataPtr->windowId, 2);
 }
 

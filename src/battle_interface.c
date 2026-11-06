@@ -2367,6 +2367,11 @@ static s32 CalcNewBarValue(s32 maxValue, s32 oldValue, s32 receivedValue, s32 *c
     {
         s32 toAdd = Q_24_8(maxValue) / scale;
 
+        // Gunk's: two pixels a frame here too for the EXP bar (64 px; the HP bar is 48), when a level takes
+        // fewer EXP points than the bar has pixels
+        if (scale == B_EXPBAR_PIXELS)
+            toAdd *= 2;
+
         if (receivedValue < 0) // fill bar right
         {
             *currValue += toAdd;

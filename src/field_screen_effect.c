@@ -437,6 +437,12 @@ void ReturnToFieldOpenStartMenu(void)
     LockPlayerFieldControls();
 }
 
+// Gunk's: the field is back from a menu and about to show the START menu again
+bool8 IsFieldWaitingToShowStartMenu(void)
+{
+    return FuncIsActiveTask(Task_WaitForFadeShowStartMenu);
+}
+
 bool8 FieldCB_ReturnToFieldOpenStartMenu(void)
 {
     ShowReturnToFieldStartMenu();
