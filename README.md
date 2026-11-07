@@ -18,7 +18,10 @@ It keeps the game's difficulty and story as they are and takes the grind and fri
   - Every DexNav Pokémon is an ordinary, legal wild roll: search levels, chains and stars give extra rolls for
     good IVs and shinies instead of editing the Pokémon.
   - The chain grows when you catch or defeat the Pokémon, and resets when you run, take too long or meet
-    another species.
+    another species. The START menu and the Bag pause a search.
+  - It doesn't search in the Safari Zone (Safari Pokémon take Safari Balls).
+- **Info:** a growing berry tree says how many hours until it bears fruit; on Route 119 an empty cast says how
+  many steps the nearest Feebas spot is; during a swarm the DexNav's title bar says which Pokémon and where.
 - **Pokémon follow you**, with emotes and messages, for all 386 species.
 - **16 PC boxes** (14 in the original game).
 - **Faster play:** instant text (INST. after FAST in Options), a faster EXP bar, auto-run (hold B to walk),
