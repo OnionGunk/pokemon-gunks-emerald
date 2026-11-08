@@ -719,19 +719,18 @@ static bool8 DexNavPickTile(u8 environment, u8 areaX, u8 areaY, bool8 smallScan)
             case ENCOUNTER_TYPE_LAND:
                 if (MetatileBehavior_IsLandWildEncounter(tileBehaviour))
                 {
-                    if (currMapType == MAP_TYPE_UNDERGROUND)
-                    { // inside (cave)
-                        if (IsElevationMismatchAt(gObjectEvents[gPlayerAvatar.spriteId].currentElevation, topX, topY))
-                            break; //occurs at same z coord
-                        
-                        scale = 440 - (smallScan * 200) - (GetPlayerDistance(topX, topY) / 2)  - (2 * (topX + topY));
-                        weight = ((Random() % scale) < 1) && !MapGridGetCollisionAt(topX, topY);
-                    }
-                    else
-                    { // outdoors: grass
-                        scale = 100 - (GetPlayerDistance(topX, topY) * 2);
-                        weight = (Random() % scale <= 5) && !MapGridGetCollisionAt(topX, topY);
-                    }
+                    // Gunk's: one rule for every land encounter tile (grass, sand, cave floor, indoor encounter
+                    // tiles), the grass one. The cave rule, 440 - ... - 2 * (x + y) in a u8, wrapped: how likely a
+                    // tile was depended on where it sat in the map, open cave floor often gave "couldn't be found
+                    // nearby", and on large maps the scale could reach 0 (Random() % 0).
+                    s32 landScale = 100 - (GetPlayerDistance(topX, topY) * 2);
+
+                    if (currMapType == MAP_TYPE_UNDERGROUND
+                     && IsElevationMismatchAt(gObjectEvents[gPlayerAvatar.spriteId].currentElevation, topX, topY))
+                        break; // a cave ledge above or below the player
+                    if (landScale < 20)
+                        landScale = 20;
+                    weight = (Random() % landScale <= 5) && !MapGridGetCollisionAt(topX, topY);
                 }
                 break;
             case ENCOUNTER_TYPE_WATER:
@@ -964,7 +963,9 @@ static void Task_InitDexNavSearch(u8 taskId)
         return;
     }
 
-    if (GetFlashLevel() > 0)
+    // Gunk's: too dark only in a dark cave before Flash (Flash leaves the flash level at 1, not 0, so the old
+    // GetFlashLevel() > 0 refused there even after Flash)
+    if (gMapHeader.cave && !FlagGet(FLAG_SYS_USE_FLASH))
     {
         sDexNavSearchDataPtr = NULL;
         FreeMonIconPalettes();
@@ -2984,7 +2985,7 @@ bool8 TryFindHiddenPokemon(void)
     u32 attempts = 0;
     u16 currSteps;
 
-    if (!FlagGet(FLAG_SYS_DETECTOR_MODE) || FlagGet(FLAG_SYS_DEXNAV_SEARCH) || GetFlashLevel() > 0 || GetSafariZoneFlag())
+    if (!FlagGet(FLAG_SYS_DETECTOR_MODE) || FlagGet(FLAG_SYS_DEXNAV_SEARCH) || (gMapHeader.cave && !FlagGet(FLAG_SYS_USE_FLASH)) || GetSafariZoneFlag())
     {
         (*stepPtr) = 0;
         return FALSE;
